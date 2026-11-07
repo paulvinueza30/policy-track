@@ -1,31 +1,20 @@
-import Image from "next/image";
 import Link from "next/link";
 import SenateMap from "./SenateMap";
 import StatePicker from "./StatePicker";
 import states from "@/lib/states.json";
-import { demoPolicies, demoSenators, formatDemoDate, getDemoDelegation } from "@/lib/demo";
+import { ApiError, getStateSenators } from "@/lib/api";
+import { formatDate, voteHref } from "@/lib/display";
 
 const stateOptions = states.map(({ code, name }) => ({ code, name }));
-
-export function DemoLabel({ children = "Demo content" }) {
-  return <span className="demo-label">{children}</span>;
-}
+const tallyLabels = { yea: "Yea", nay: "Nay", present: "Present", notVoting: "Not Voting" };
 
 export function Portrait({ senator }) {
-  return (
-    <span className="portrait" aria-hidden="true">
-      {senator.portrait
-        ? <Image src={senator.portrait} alt="" width={112} height={112} />
-        : senator.initials}
-    </span>
-  );
+  const initials = senator.name.split(/\s+/).filter(Boolean).slice(0, 2).map((name) => name[0]).join("");
+  return <span className="portrait" aria-hidden="true">{initials}</span>;
 }
 
-export function DelegationExplorer({ stateCode, senatorId }) {
-  const selectedState = states.find(({ code }) => code === stateCode);
-  const senators = getDemoDelegation(selectedState);
-  const active = senators.find(({ id }) => id === senatorId) ?? senators[0];
-
+export function DelegationExplorer({ state, senators, active, unavailable }) {
+  const stateCode = state?.code ?? "";
   return (
     <section className="panel explorer section" id="explore" aria-labelledby="explore-title">
       <div className="section-heading">
@@ -39,28 +28,31 @@ export function DelegationExplorer({ stateCode, senatorId }) {
         <SenateMap key={stateCode} states={states} stateCode={stateCode} />
         <div className="delegation" id="delegation">
           <StatePicker key={stateCode} options={stateOptions} stateCode={stateCode} />
-          <div className="delegation-heading">
-            <h3>{selectedState.name} Senate Delegation</h3>
-            <DemoLabel>Fictional profiles</DemoLabel>
-          </div>
-          <ul className="senator-list">
-            {senators.map((senator) => (
-              <li key={senator.id}>
-                <Link className="senator-link" href={`/state/${stateCode}?senator=${senator.id}#delegation`}
-                  aria-current={active.id === senator.id ? "true" : undefined}>
-                  <Portrait senator={senator} />
-                  <span><strong>{senator.name}</strong><small>{senator.seat}{senator.party && " · " + senator.party}</small></span>
-                  <span className="arrow" aria-hidden="true">{active.id === senator.id ? "✓" : "→"}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-          <div className="active-senator">
-            <p className="eyebrow">Selected senator · Demo profile</p>
-            <h3>{active.name}</h3>
-            <p>{selectedState.name} statewide · {active.seat}</p>
-            <Link className="button" href={"/senator/" + active.id}>Open senator dossier →</Link>
-          </div>
+          {state && <h3>{state.name} Senate Delegation</h3>}
+          {unavailable && <p className="empty">The delegation is unavailable right now. Try again later.</p>}
+          {senators?.length === 0 && <p className="empty">No senators were returned for this state.</p>}
+          {active && (
+            <>
+              <ul className="senator-list">
+                {senators.map((senator) => (
+                  <li key={senator.bioguideId}>
+                    <Link className="senator-link" href={`/state/${stateCode}?senator=${encodeURIComponent(senator.bioguideId)}#delegation`}
+                      aria-current={active.bioguideId === senator.bioguideId ? "true" : undefined}>
+                      <Portrait senator={senator} />
+                      <span><strong>{senator.name}</strong><small>{senator.party} · {senator.inOfficeTo ? "Former senator" : "Current senator"}</small></span>
+                      <span className="arrow" aria-hidden="true">{active.bioguideId === senator.bioguideId ? "✓" : "→"}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              <div className="active-senator">
+                <p className="eyebrow">Selected senator</p>
+                <h3>{active.name}</h3>
+                <p>{state.name} · {active.party}</p>
+                <Link className="button" href={"/senator/" + encodeURIComponent(active.bioguideId)}>Open senator dossier →</Link>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </section>
@@ -72,65 +64,64 @@ export function VoteBadge({ position }) {
   return <span className={"vote-badge " + tone}>{position}</span>;
 }
 
-export function DemoSummary({ policy }) {
-  return (
-    <div className="summary">
-      <div className="inline-heading"><h3>AI Plain-English Summary</h3><DemoLabel>Demo AI response</DemoLabel></div>
-      <p>{policy.summary}</p>
-      <small>Source for this example · VoteLens fictional policy and vote record</small>
-    </div>
-  );
-}
-
-export function VoteCard({ policy, senatorIndex, expanded = false }) {
+export function VoteCard({ vote, stateCode }) {
   return (
     <article className="panel vote-card">
       <div className="vote-meta">
-        <VoteBadge position={policy.positions[senatorIndex]} />
-        <DemoLabel>Demo vote</DemoLabel>
-        <span>{policy.topic}</span>
-        <time dateTime={policy.date}>{formatDemoDate(policy.date)}</time>
+        <VoteBadge position={vote.position} />
+        <span>Roll call {vote.voteNumber}</span>
+        <time dateTime={vote.date}>{formatDate(vote.date)}</time>
       </div>
-      <h3>{policy.title}</h3>
-      {expanded && <DemoSummary policy={policy} />}
+      <h3>{vote.question}</h3>
       <div className="vote-footer">
-        <span>Sample result · {policy.result}</span>
-        <Link href={"/policy/" + policy.id}>View policy &amp; AI guide →</Link>
+        <span>{vote.result}</span>
+        <Link href={voteHref(vote, stateCode)}>{vote.policyId ? "View vote and policy" : "View roll call"} →</Link>
       </div>
     </article>
   );
 }
 
-export function FeaturedVoting({ senatorId }) {
-  const senatorIndex = Math.max(0, demoSenators.findIndex(({ id }) => id === senatorId));
-  const senator = demoSenators[senatorIndex];
+export async function RollCall({ vote, state, positionsUnavailable }) {
+  const members = vote.senatorVotes ?? [];
+  const needsDelegation = state && members.some((member) => !member.state);
+  const delegation = needsDelegation ? await getStateSenators(state.code).catch((error) => {
+    if (!(error instanceof ApiError)) throw error;
+    return null;
+  }) : [];
+  const byId = new Map(delegation?.map((senator) => [senator.bioguideId, senator]));
+  const positions = members.filter((member) => !state || (member.state ?? byId.get(member.bioguideId)?.state) === state.code);
   return (
-    <section className="section" id="voting-record">
-      <div className="section-heading">
-        <div><p className="eyebrow">Texas · Sample roll calls</p><h2>Voting Record: {senator.name}</h2></div>
-        <Link className="button" href={"/senator/" + senator.id}>View full voting record →</Link>
-      </div>
-      <div className="stack">
-        {demoPolicies.map((policy) => <VoteCard key={policy.id} policy={policy} senatorIndex={senatorIndex} />)}
-      </div>
-    </section>
-  );
-}
-
-export function DemoNews() {
-  return (
-    <section className="section" id="news">
-      <div className="section-heading"><div><p className="eyebrow">Policy coverage</p><h2>Trending Policy News</h2></div></div>
-      <div className="news-grid">
-        {demoPolicies.map((policy) => (
-          <article className="panel news-card" key={policy.id}>
-            <DemoLabel>Demo headline</DemoLabel>
-            <p className="eyebrow">{policy.topic}</p>
-            <h3>{policy.headline}</h3>
-            <Link href={"/policy/" + policy.id}>View sample policy →</Link>
-          </article>
-        ))}
-      </div>
-    </section>
+    <>
+      <section className="policy-section">
+        <h2>Roll-Call Tally</h2>
+        <div className="vote-meta">
+          <span>Roll call {vote.voteNumber}</span>
+          <time dateTime={vote.date}>{formatDate(vote.date)}</time>
+          <strong>{vote.result}</strong>
+        </div>
+        <dl className="tallies">
+          {Object.entries(tallyLabels).map(([key, label]) => (
+            <div key={key}><dt>{label}</dt><dd>{vote.tally[key]}</dd></div>
+          ))}
+        </dl>
+      </section>
+      <section className="policy-section">
+        <h2>{state ? `How ${state.name} Senators Voted` : "How Senators Voted"}</h2>
+        {positionsUnavailable ? <p>Individual positions are unavailable right now.</p>
+          : positions?.length ? (
+            <ul className="roll-calls policy-votes">
+              {positions.map((member) => (
+                <li key={member.bioguideId}>
+                  <Link href={"/senator/" + encodeURIComponent(member.bioguideId)}>
+                    {member.name || byId.get(member.bioguideId)?.name || member.bioguideId}{!state && member.state ? ` · ${member.state}` : ""}
+                  </Link>
+                  <VoteBadge position={member.position} />
+                </li>
+              ))}
+            </ul>
+          ) : <p>No individual positions were returned for this roll call.</p>}
+        {needsDelegation && !delegation && <p>Some positions could not be matched to this state.</p>}
+      </section>
+    </>
   );
 }

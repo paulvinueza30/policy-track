@@ -22,7 +22,9 @@ export default function SenateMap({ states, stateCode }) {
 
   return (
     <div className="map-panel">
-      <p className="map-label"><span className="map-key" /> Selected state <strong>{selected.name}</strong></p>
+      <p className="map-label">
+        {selected ? <><span className="map-key" /> Selected state <strong>{selected.name}</strong></> : "Choose a state on the map"}
+      </p>
       <div className="map-canvas">
         <svg viewBox="0 0 1020 630" className="senate-map" aria-label="Select a U.S. state" role="group">
           {states.map(({ code, name, path }) => (

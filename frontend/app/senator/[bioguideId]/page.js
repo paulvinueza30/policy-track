@@ -1,83 +1,104 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { DemoLabel, Portrait, VoteBadge, VoteCard } from "@/components/VoteLens";
-import { demoPolicies, demoSenators, formatDemoDate, getDemoProfile } from "@/lib/demo";
+import { Portrait, VoteBadge, VoteCard } from "@/components/VoteLens";
+import { ApiError, getSenator, getSenatorVotes } from "@/lib/api";
+import { findState, formatDate, voteHref } from "@/lib/display";
 
 const positions = ["Yea", "Nay", "Present", "Not Voting"];
+const pageSize = 25;
+const filterDate = (value) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : "";
 
 export default async function SenatorPage({ params, searchParams }) {
   const { bioguideId } = await params;
-  const { view, position, from, to } = await searchParams;
-  const profile = getDemoProfile(bioguideId);
-  if (!profile) notFound();
-  const { senator, state } = profile;
-  const senatorIndex = demoSenators.indexOf(senator);
-  const hasSampleVotes = senatorIndex !== -1;
-  const allVotes = view === "all";
-  const selectedPosition = positions.includes(position) ? position : "";
-  const start = typeof from === "string" && /^\d{4}-\d{2}-\d{2}$/.test(from) ? from : "";
-  const end = typeof to === "string" && /^\d{4}-\d{2}-\d{2}$/.test(to) ? to : "";
-  const filtered = hasSampleVotes ? demoPolicies.filter((policy) => (
-    (!selectedPosition || policy.positions[senatorIndex] === selectedPosition) &&
-    (!start || policy.date >= start) && (!end || policy.date <= end)
-  )) : [];
+  const query = await searchParams;
+  const allVotes = query.view === "all";
+  const selectedPosition = positions.includes(query.position) ? query.position : "";
+  const from = filterDate(query.from);
+  const to = filterDate(query.to);
+  const requestedPage = Number(query.page);
+  const page = allVotes && Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const filters = {};
+  if (allVotes) {
+    if (selectedPosition) filters.position = selectedPosition;
+    if (from) filters.from = from;
+    if (to) filters.to = to;
+  }
+
+  const [profile, record] = await Promise.allSettled([
+    getSenator(bioguideId),
+    getSenatorVotes(bioguideId, { ...filters, page, pageSize: allVotes ? pageSize : 3 }),
+  ]);
+  if (profile.status === "rejected") {
+    if (!(profile.reason instanceof ApiError)) throw profile.reason;
+    if (profile.reason.status === 404) notFound();
+    return <main className="frame page"><p className="panel empty">The senator profile is unavailable right now.</p></main>;
+  }
+  if (record.status === "rejected" && !(record.reason instanceof ApiError)) throw record.reason;
+  const senator = profile.value;
+  const state = findState(senator.state);
+  const votes = record.status === "fulfilled" ? record.value : null;
+  const items = votes?.items.slice(0, allVotes ? pageSize : 3);
+  const totalPages = votes ? Math.ceil(votes.total / (votes.pageSize ?? pageSize)) : 0;
+  const votePage = (number) => "?" + new URLSearchParams({ ...filters, view: "all", page: number }) + "#recent-policies";
 
   return (
     <main className="frame page">
       <nav className="breadcrumbs" aria-label="Breadcrumb">
-        <Link href="/">United States Senate</Link><span aria-hidden="true">›</span>
-        <Link href={`/state/${state.code}?senator=${senator.id}#delegation`}>{state.name} Delegation</Link>
+        <Link href="/">United States Senate</Link>
+        {state && <><span aria-hidden="true">›</span><Link href={`/state/${state.code}?senator=${encodeURIComponent(senator.bioguideId)}#delegation`}>{state.name} Delegation</Link></>}
       </nav>
       <section className="panel profile">
         <Portrait senator={senator} />
         <div>
-          <div className="inline-heading"><p className="eyebrow">U.S. Senate · {state.name} statewide</p><DemoLabel>Fictional profile</DemoLabel></div>
+          <p className="eyebrow">U.S. Senate · {state?.name ?? senator.state}</p>
           <h1>{senator.name}</h1>
-          <div className="profile-tags">{senator.party && <span className="party-tag">{senator.party}</span>}<span className="tag">{senator.seat}</span></div>
+          <div className="profile-tags">
+            {senator.party && <span className="tag">{senator.party}</span>}
+            <span className="tag">{senator.inOfficeTo ? "Former senator" : "Current senator"}</span>
+          </div>
+          {senator.inOfficeFrom && <p>In office from {formatDate(senator.inOfficeFrom)}{senator.inOfficeTo ? " to " + formatDate(senator.inOfficeTo) : ""}</p>}
         </div>
-        {hasSampleVotes && <a href="#recent-policies" className="button">View voting record ↓</a>}
+        <a href="#recent-policies" className="button">View voting record ↓</a>
       </section>
       <section className="section" id="recent-policies">
         <div className="section-heading">
-          <div><p className="eyebrow">Senator dossier</p><h2>Policy Votes</h2></div>
-          {hasSampleVotes && <nav className="segments" aria-label="Vote record views">
+          <div><p className="eyebrow">Senator dossier</p><h2>Senate Votes</h2></div>
+          <nav className="segments" aria-label="Vote record views">
             <Link href="?view=recent#recent-policies" aria-current={!allVotes ? "page" : undefined}>Three most recent</Link>
-            <Link href="?view=all#recent-policies" aria-current={allVotes ? "page" : undefined}>All sample votes</Link>
-          </nav>}
+            <Link href="?view=all#recent-policies" aria-current={allVotes ? "page" : undefined}>All votes</Link>
+          </nav>
         </div>
-        {!hasSampleVotes ? (
-          <div className="panel empty">
-            <p>Sample votes are available in the Texas demo.</p>
-            <Link href="/state/TX">Explore the Texas delegation →</Link>
-          </div>
-        ) : allVotes ? (
-          <>
-            <form action="#recent-policies" method="get" className="panel filters">
-              <input type="hidden" name="view" value="all" />
-              <label>Vote position<select name="position" defaultValue={selectedPosition}>
-                <option value="">Any position</option>
-                {positions.map((item) => <option key={item}>{item}</option>)}
-              </select></label>
-              <label>From<input type="date" name="from" defaultValue={start} /></label>
-              <label>To<input type="date" name="to" defaultValue={end} /></label>
-              <button className="button" type="submit">Filter votes</button>
-            </form>
-            {filtered.length ? (
-              <ul className="panel roll-calls" aria-label="Sample roll calls">
-                {filtered.map((policy) => (
-                  <li key={policy.id}>
-                    <div className="vote-meta"><VoteBadge position={policy.positions[senatorIndex]} /><DemoLabel>Demo vote</DemoLabel></div>
-                    <Link href={"/policy/" + policy.id}>{policy.title}</Link>
-                    <time dateTime={policy.date}>{formatDemoDate(policy.date)}</time>
-                  </li>
-                ))}
-              </ul>
-            ) : <p className="panel empty">No sample votes match these filters.</p>}
-          </>
-        ) : (
-          <div className="stack">
-            {demoPolicies.slice(0, 3).map((policy) => <VoteCard key={policy.id} policy={policy} senatorIndex={senatorIndex} expanded />)}
-          </div>
+        {allVotes && (
+          <form action="#recent-policies" method="get" className="panel filters" key={JSON.stringify(filters)}>
+            <input type="hidden" name="view" value="all" />
+            <label>Vote position<select name="position" defaultValue={selectedPosition}>
+              <option value="">Any position</option>
+              {positions.map((position) => <option key={position}>{position}</option>)}
+            </select></label>
+            <label>From<input type="date" name="from" defaultValue={from} /></label>
+            <label>To<input type="date" name="to" defaultValue={to} /></label>
+            <button className="button" type="submit">Filter votes</button>
+          </form>
+        )}
+        {votes === null && <p className="panel empty">{record.reason.status === 400 || record.reason.status === 422 ? "Check that the dates are valid and that From is on or before To." : "The voting record is unavailable right now."}</p>}
+        {votes && !items.length && <p className="panel empty">No votes match this view.</p>}
+        {items?.length > 0 && (allVotes ? (
+          <ul className="panel roll-calls" aria-label="Senate roll calls">
+            {items.map((vote) => (
+              <li key={vote.voteId}>
+                <VoteBadge position={vote.position} />
+                <Link href={voteHref(vote, state?.code)}>{vote.question}</Link>
+                <time dateTime={vote.date}>{formatDate(vote.date)}</time>
+              </li>
+            ))}
+          </ul>
+        ) : <div className="stack">{items.map((vote) => <VoteCard key={vote.voteId} vote={vote} stateCode={state?.code} />)}</div>)}
+        {allVotes && votes && (page > 1 || page < totalPages) && (
+          <nav className="vote-footer" aria-label="Vote pages">
+            {page > 1 && <Link href={votePage(page - 1)}>← Previous page</Link>}
+            <span>Page {page}</span>
+            {page < totalPages && <Link href={votePage(page + 1)}>Next page →</Link>}
+          </nav>
         )}
       </section>
     </main>

@@ -1,4 +1,4 @@
-import { DelegationExplorer, DemoNews, FeaturedVoting } from "@/components/VoteLens";
+import { DelegationExplorer } from "@/components/VoteLens";
 
 export default function HomePage() {
   return (
@@ -8,9 +8,7 @@ export default function HomePage() {
         <h1>Understand how your U.S. Senators vote on what matters to you.</h1>
         <p>Explore your state’s Senate delegation, browse roll-call votes, and see policy explained in plain English.</p>
       </section>
-      <DelegationExplorer stateCode="TX" />
-      <FeaturedVoting />
-      <DemoNews />
+      <DelegationExplorer />
     </main>
   );
 }

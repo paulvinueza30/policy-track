@@ -15,7 +15,8 @@ export default function StatePicker({ options, stateCode }) {
     <form className="state-picker" onSubmit={openState}>
       <label htmlFor="state-picker" className="eyebrow">Find your state</label>
       <div className="picker-controls">
-        <select id="state-picker" name="state" defaultValue={stateCode}>
+        <select id="state-picker" name="state" defaultValue={stateCode} required>
+          <option value="" disabled>Select a state</option>
           {options.map(({ code, name }) => <option value={code} key={code}>{name}</option>)}
         </select>
         <button className="button" type="submit">Explore</button>

@@ -14,12 +14,6 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className={bodyFont.variable + " " + headlineFont.variable}>
-        <aside className="notice">
-          <div className="frame notice-inner">
-            <span className="demo-label">Demo Content &amp; Prototype</span>
-            <span>Fictional senators, votes, headlines and AI examples.</span>
-          </div>
-        </aside>
         <header className="site-header">
           <div className="frame header-inner">
             <Link className="brand" href="/">
@@ -31,8 +25,6 @@ export default function RootLayout({ children }) {
             </Link>
             <nav className="site-nav" aria-label="Main navigation">
               <Link href="/#explore">Explore</Link>
-              <Link href="/#voting-record">Votes</Link>
-              <Link href="/#news">News</Link>
             </nav>
           </div>
         </header>
@@ -40,8 +32,7 @@ export default function RootLayout({ children }) {
         <footer className="site-footer" id="about">
           <div className="frame">
             <strong>VoteLens</strong>
-            <p>A Policy Track prototype for exploring the U.S. Senate.</p>
-            <p>Sample records, headlines and AI responses are fictional demo content.</p>
+            <p>A Policy Track project for exploring the U.S. Senate.</p>
           </div>
         </footer>
       </body>
