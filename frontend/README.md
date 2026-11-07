@@ -25,7 +25,7 @@ From this directory, run `npm ci` and `npm run dev`. The preview runs without th
 - Start at the home page. Hover or focus a state on the desktop map for a tooltip, then select it on the map or with the state picker.
 - Select a fictional senator to preview their profile and open their dossier. In Texas, switch to **All sample votes** to filter by position or date.
 - Open a sample policy to see its tally, related headline, and example AI response.
-- At mobile widths, use the state picker and bottom navigation.
+- At mobile widths, tap the map or use the state picker for smaller states. Navigation moves to the bottom.
 
 Votes, headlines, and AI responses are fictional demo content. Every state has two fictional profiles, with sample votes available in the Texas demo.
 

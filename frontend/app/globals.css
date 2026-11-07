@@ -161,7 +161,7 @@ select, input[type="date"] { min-width: 0; width: 100%; padding: .45rem .55rem; 
   .frame { width: calc(100% - 2rem); }
   .page { padding-block: 1.2rem 2rem; }
   .explore-grid, .news-grid { grid-template-columns: 1fr; }
-  .map-panel { display: none; }
+  .map-panel { padding: .65rem; }
   .intro:not(.compact) { padding: 1rem; border: 1px solid var(--line); border-radius: .85rem; background: var(--card); }
   .section { margin-top: 1.65rem; }
 }
