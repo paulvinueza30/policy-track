@@ -1,8 +1,33 @@
+import states from "./states.json";
+
 // Fictional records for the Stitch preview. Keep these separate from the API client.
 export const demoSenators = [
   { id: "demo-jenkins", name: "Sen. Sarah Jenkins", portrait: "/votelens/jenkins.jpg", party: "Republican", seat: "Senior Senator" },
   { id: "demo-hayes", name: "Sen. Robert Hayes", portrait: "/votelens/hayes.jpg", party: "Republican", seat: "Junior Senator" },
 ];
+
+export function getDemoDelegation(state) {
+  if (state.code === "TX") return demoSenators;
+
+  return ["Senior", "Junior"].map((role) => ({
+    id: `demo-${state.code.toLowerCase()}-${role.toLowerCase()}`,
+    name: `${state.name} ${role} Senator`,
+    seat: `${role} Senator`,
+    initials: state.code,
+  }));
+}
+
+export function getDemoProfile(id) {
+  const texasSenator = demoSenators.find((senator) => senator.id === id);
+  if (texasSenator) return { senator: texasSenator, state: states.find(({ code }) => code === "TX") };
+
+  const match = /^demo-([a-z]{2})-(senior|junior)$/.exec(id);
+  if (!match) return null;
+  const state = states.find(({ code }) => code.toLowerCase() === match[1]);
+  if (!state) return null;
+  const senator = getDemoDelegation(state).find((item) => item.id === id);
+  return senator ? { senator, state } : null;
+}
 
 export const demoPolicies = [
   {

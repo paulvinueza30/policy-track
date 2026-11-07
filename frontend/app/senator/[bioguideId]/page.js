@@ -1,48 +1,56 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DemoLabel, Portrait, VoteBadge, VoteCard } from "@/components/VoteLens";
-import { demoPolicies, demoSenators, formatDemoDate } from "@/lib/demo";
+import { demoPolicies, demoSenators, formatDemoDate, getDemoProfile } from "@/lib/demo";
 
 const positions = ["Yea", "Nay", "Present", "Not Voting"];
 
 export default async function SenatorPage({ params, searchParams }) {
   const { bioguideId } = await params;
   const { view, position, from, to } = await searchParams;
-  const senatorIndex = demoSenators.findIndex(({ id }) => id === bioguideId);
-  if (senatorIndex === -1) notFound();
-  const senator = demoSenators[senatorIndex];
+  const profile = getDemoProfile(bioguideId);
+  if (!profile) notFound();
+  const { senator, state } = profile;
+  const senatorIndex = demoSenators.indexOf(senator);
+  const hasSampleVotes = senatorIndex !== -1;
   const allVotes = view === "all";
   const selectedPosition = positions.includes(position) ? position : "";
   const start = typeof from === "string" && /^\d{4}-\d{2}-\d{2}$/.test(from) ? from : "";
   const end = typeof to === "string" && /^\d{4}-\d{2}-\d{2}$/.test(to) ? to : "";
-  const filtered = demoPolicies.filter((policy) => (
+  const filtered = hasSampleVotes ? demoPolicies.filter((policy) => (
     (!selectedPosition || policy.positions[senatorIndex] === selectedPosition) &&
     (!start || policy.date >= start) && (!end || policy.date <= end)
-  ));
+  )) : [];
 
   return (
     <main className="frame page">
       <nav className="breadcrumbs" aria-label="Breadcrumb">
-        <Link href="/">United States Senate</Link><span aria-hidden="true">›</span><Link href="/state/TX">Texas Delegation</Link>
+        <Link href="/">United States Senate</Link><span aria-hidden="true">›</span>
+        <Link href={`/state/${state.code}?senator=${senator.id}#delegation`}>{state.name} Delegation</Link>
       </nav>
       <section className="panel profile">
         <Portrait senator={senator} />
         <div>
-          <div className="inline-heading"><p className="eyebrow">U.S. Senate · Texas statewide</p><DemoLabel>Fictional profile</DemoLabel></div>
+          <div className="inline-heading"><p className="eyebrow">U.S. Senate · {state.name} statewide</p><DemoLabel>Fictional profile</DemoLabel></div>
           <h1>{senator.name}</h1>
-          <div className="profile-tags"><span className="party-tag">{senator.party}</span><span className="tag">{senator.seat}</span></div>
+          <div className="profile-tags">{senator.party && <span className="party-tag">{senator.party}</span>}<span className="tag">{senator.seat}</span></div>
         </div>
-        <a href="#recent-policies" className="button">View voting record ↓</a>
+        {hasSampleVotes && <a href="#recent-policies" className="button">View voting record ↓</a>}
       </section>
       <section className="section" id="recent-policies">
         <div className="section-heading">
           <div><p className="eyebrow">Senator dossier</p><h2>Policy Votes</h2></div>
-          <nav className="segments" aria-label="Vote record views">
+          {hasSampleVotes && <nav className="segments" aria-label="Vote record views">
             <Link href="?view=recent#recent-policies" aria-current={!allVotes ? "page" : undefined}>Three most recent</Link>
             <Link href="?view=all#recent-policies" aria-current={allVotes ? "page" : undefined}>All sample votes</Link>
-          </nav>
+          </nav>}
         </div>
-        {allVotes ? (
+        {!hasSampleVotes ? (
+          <div className="panel empty">
+            <p>Sample votes are available in the Texas demo.</p>
+            <Link href="/state/TX">Explore the Texas delegation →</Link>
+          </div>
+        ) : allVotes ? (
           <>
             <form action="#recent-policies" method="get" className="panel filters">
               <input type="hidden" name="view" value="all" />

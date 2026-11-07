@@ -22,12 +22,12 @@ You can start editing the page by modifying `app/page.js`. The page auto-updates
 
 From this directory, run `npm ci` and `npm run dev`. The preview runs without the FastAPI server.
 
-- Start at the home page and select a state on the map or with the state picker.
-- Open either fictional senator in the Texas demo. Switch to **All sample votes** to filter by position or date.
+- Start at the home page. Hover or focus a state on the desktop map for a tooltip, then select it on the map or with the state picker.
+- Select a fictional senator to preview their profile and open their dossier. In Texas, switch to **All sample votes** to filter by position or date.
 - Open a sample policy to see its tally, related headline, and example AI response.
 - At mobile widths, use the state picker and bottom navigation.
 
-Votes, headlines, and AI responses are fictional demo content. The Texas profiles are fictional too. Other states show an empty delegation until data is available.
+Votes, headlines, and AI responses are fictional demo content. Every state has two fictional profiles, with sample votes available in the Texas demo.
 
 ## Learn More
 

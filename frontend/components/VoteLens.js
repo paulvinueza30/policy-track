@@ -1,8 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
+import SenateMap from "./SenateMap";
 import StatePicker from "./StatePicker";
 import states from "@/lib/states.json";
-import { demoPolicies, demoSenators, formatDemoDate } from "@/lib/demo";
+import { demoPolicies, demoSenators, formatDemoDate, getDemoDelegation } from "@/lib/demo";
 
 const stateOptions = states.map(({ code, name }) => ({ code, name }));
 
@@ -13,14 +14,17 @@ export function DemoLabel({ children = "Demo content" }) {
 export function Portrait({ senator }) {
   return (
     <span className="portrait" aria-hidden="true">
-      <Image src={senator.portrait} alt="" width={112} height={112} />
+      {senator.portrait
+        ? <Image src={senator.portrait} alt="" width={112} height={112} />
+        : senator.initials}
     </span>
   );
 }
 
-export function DelegationExplorer({ stateCode }) {
+export function DelegationExplorer({ stateCode, senatorId }) {
   const selectedState = states.find(({ code }) => code === stateCode);
-  const isTexas = stateCode === "TX";
+  const senators = getDemoDelegation(selectedState);
+  const active = senators.find(({ id }) => id === senatorId) ?? senators[0];
 
   return (
     <section className="panel explorer section" id="explore" aria-labelledby="explore-title">
@@ -32,42 +36,31 @@ export function DelegationExplorer({ stateCode }) {
         <span className="tag">2 U.S. Senators per state</span>
       </div>
       <div className="explore-grid">
-        <div className="map-panel">
-          <p className="map-label"><span className="map-key" /> Selected state <strong>{selectedState.name}</strong></p>
-          <svg viewBox="0 0 1020 630" className="senate-map" aria-label="Select a U.S. state" role="group">
-            {states.map(({ code, name, path }) => (
-              <Link key={code} href={"/state/" + code} prefetch={false} aria-label={name}
-                aria-current={code === stateCode ? "true" : undefined}>
-                <title>{name}</title>
-                <path d={path} />
-              </Link>
-            ))}
-          </svg>
-        </div>
-        <div className="delegation">
+        <SenateMap key={stateCode} states={states} stateCode={stateCode} />
+        <div className="delegation" id="delegation">
           <StatePicker key={stateCode} options={stateOptions} stateCode={stateCode} />
           <div className="delegation-heading">
             <h3>{selectedState.name} Senate Delegation</h3>
-            {isTexas && <DemoLabel>Fictional profiles</DemoLabel>}
+            <DemoLabel>Fictional profiles</DemoLabel>
           </div>
-          {isTexas ? (
-            <ul className="senator-list">
-              {demoSenators.map((senator) => (
-                <li key={senator.id}>
-                  <Link className="senator-link" href={"/senator/" + senator.id}>
-                    <Portrait senator={senator} />
-                    <span><strong>{senator.name}</strong><small>{senator.seat} · {senator.party}</small></span>
-                    <span className="arrow" aria-hidden="true">→</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="empty">
-              <p>Delegation data is unavailable for this state in the preview.</p>
-              <Link href="/state/TX">Explore the Texas demo →</Link>
-            </div>
-          )}
+          <ul className="senator-list">
+            {senators.map((senator) => (
+              <li key={senator.id}>
+                <Link className="senator-link" href={`/state/${stateCode}?senator=${senator.id}#delegation`}
+                  aria-current={active.id === senator.id ? "true" : undefined}>
+                  <Portrait senator={senator} />
+                  <span><strong>{senator.name}</strong><small>{senator.seat}{senator.party && " · " + senator.party}</small></span>
+                  <span className="arrow" aria-hidden="true">{active.id === senator.id ? "✓" : "→"}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <div className="active-senator">
+            <p className="eyebrow">Selected senator · Demo profile</p>
+            <h3>{active.name}</h3>
+            <p>{selectedState.name} statewide · {active.seat}</p>
+            <Link className="button" href={"/senator/" + active.id}>Open senator dossier →</Link>
+          </div>
         </div>
       </div>
     </section>
@@ -108,15 +101,17 @@ export function VoteCard({ policy, senatorIndex, expanded = false }) {
   );
 }
 
-export function FeaturedVoting() {
+export function FeaturedVoting({ senatorId }) {
+  const senatorIndex = Math.max(0, demoSenators.findIndex(({ id }) => id === senatorId));
+  const senator = demoSenators[senatorIndex];
   return (
     <section className="section" id="voting-record">
       <div className="section-heading">
-        <div><p className="eyebrow">Texas · Sample roll calls</p><h2>Voting Record: {demoSenators[0].name}</h2></div>
-        <Link className="button" href={"/senator/" + demoSenators[0].id}>Open senator dossier →</Link>
+        <div><p className="eyebrow">Texas · Sample roll calls</p><h2>Voting Record: {senator.name}</h2></div>
+        <Link className="button" href={"/senator/" + senator.id}>View full voting record →</Link>
       </div>
       <div className="stack">
-        {demoPolicies.map((policy) => <VoteCard key={policy.id} policy={policy} senatorIndex={0} />)}
+        {demoPolicies.map((policy) => <VoteCard key={policy.id} policy={policy} senatorIndex={senatorIndex} />)}
       </div>
     </section>
   );
