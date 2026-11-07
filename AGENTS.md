@@ -11,7 +11,7 @@ A web app where a user picks a **U.S. state** and sees:
 1. That state's **U.S. Senators** (current, plus anyone who held the seat in the time window).
 2. The **Senate roll-call votes** each senator cast in the **last 4 years**, and the bill, resolution or nomination each vote was on.
 3. **News articles** about each policy or bill.
-4. An **AI summary** of each policy, made by a **local LLM**, that explains what the policy does and how the state's senators voted.
+4. An **AI summary** of each policy, made by **DeepSeek running on our private server**, that explains what the policy does and how the state's senators voted.
 
 ### Target user
 A regular person who wants to know, without spin, how their senators voted.
@@ -21,7 +21,7 @@ A regular person who wants to know, without spin, how their senators voted.
 - [ ] Senator page → list of their votes (newest first), filterable by date range and by vote position (Yea / Nay / Not Voting / Present)
 - [ ] Policy/vote detail page → official info (title, date, result, tally), how each senator from the selected state voted, related articles, AI summary
 - [ ] AI summary shows the sources it used and can be regenerated
-- [ ] Works locally with `npm run dev` plus a local LLM running
+- [ ] Works locally: frontend with `npm run dev`, backend with `uvicorn app.main:app --reload`, and network access to the DeepSeek server
 
 ---
 
@@ -32,7 +32,7 @@ A regular person who wants to know, without spin, how their senators voted.
 - **Rolling 4-year window**: from today minus 4 years to today. Compute it at runtime. Never hardcode dates. As of Nov 2026 this covers part of the 117th Congress (2nd session, 2022), the 118th (2023–2024) and the 119th (2025–2026).
 - Roll-call votes on bills, resolutions, amendments and nominations
 - News articles linked to a policy
-- Local AI summaries and Q&A about a single policy
+- AI summaries and Q&A about a single policy, using our self-hosted DeepSeek
 
 ### Out of scope. Do not build these unless the team updates this file.
 - House of Representatives, state legislatures, governors
@@ -40,26 +40,39 @@ A regular person who wants to know, without spin, how their senators voted.
 - "Scores," grades, rankings, or any language that tells users which way to vote
 - Predicting future votes
 - Campaign finance, lobbying, polling data
-- Paid or cloud LLM APIs (the AI must run locally)
+- Third-party LLM APIs (OpenAI, Anthropic, DeepSeek's public cloud, etc.). The AI runs only on our private server.
 - Native mobile apps
 - Votes from before the 4-year window
 
 ---
 
-## 3. Tech stack
+## 3. Tech stack and architecture
+
+```
+Browser ──> Next.js frontend (React, JS) ──> FastAPI backend (Python) ──┬──> Congress.gov API
+                                                                         ├──> senate.gov XML
+                                                                         ├──> News API
+                                                                         ├──> Firestore
+                                                                         └──> DeepSeek (private server)
+```
 
 | Layer | Choice | Notes |
 |---|---|---|
-| Language | **JavaScript** (ES modules) | **Not TypeScript.** Use JSDoc for types where helpful. |
-| Frontend | **React** in **Next.js App Router** pages | Both live in a single Next.js app |
-| API | **Next.js Route Handlers** (`app/api/**/route.js`) | All external calls happen here, never in the browser |
-| Local AI | **DeepSeek** (`deepseek-r1`) running locally through **Ollama** at `http://localhost:11434` | See §6 |
-| Database/cache | **Cloud Firestore** via `firebase-admin` (server only) | See §5.1 |
+| Frontend | **Next.js App Router + React**, **JavaScript** | **Not TypeScript.** UI only: no database access and no external API calls |
+| Backend | **FastAPI** (Python 3.11+) | All data fetching, Firestore, news and AI calls live here |
+| HTTP client (backend) | `httpx` (async) | |
+| Data validation | Pydantic v2 models | They mirror the data model in §5 |
+| XML parsing | `lxml` or the standard-library `xml.etree.ElementTree` | For senate.gov vote files |
+| Database/cache | **Cloud Firestore** via the Python `firebase-admin` SDK | See §5.1 |
+| AI | **DeepSeek** on our **private server** | See §6 |
+| Backend tests | `pytest` | |
 | Styling | Team's choice (Tailwind recommended) | Keep it consistent once picked |
+
+**The frontend only ever talks to the FastAPI backend.** Secrets (API keys, Firebase credentials, DeepSeek URL/key) live only in the backend.
 
 ---
 
-## 4. Data sources
+## 4. Data sources (all called from the backend)
 
 ### 4.1 Congress.gov API (bills, members, summaries)
 - Base URL: `https://api.congress.gov/v3`. Free key from https://api.data.gov/signup. Env var `CONGRESS_API_KEY`.
@@ -86,7 +99,7 @@ A regular person who wants to know, without spin, how their senators voted.
 - **Canonical senator ID in our app = `bioguideId`.** Convert LIS IDs during ingest.
 
 ### 4.4 News articles
-- Use a news search API behind one adapter, `lib/news/`, so the provider can be swapped. Candidates are NewsAPI.org, GNews and The Guardian Open Platform. **Decide as a team (§10).**
+- Use a news search API behind one adapter, `backend/app/services/news/`, so the provider can be swapped. Candidates are NewsAPI.org, GNews and The Guardian Open Platform. **Decide as a team (§10).**
 - Env var `NEWS_API_KEY`. Search by bill title, short title or bill number.
 - Store only the title, source, URL, published date and short description. **Do not scrape or store full article text.** Link out to the publisher.
 
@@ -97,7 +110,9 @@ Senate vote XML includes a `<document>` block (type and number, e.g. `S. 870`, `
 
 ## 5. Core data model
 
-Plain JS objects. These names are the shared contract between frontend and API, so don't rename fields without updating this file.
+These are the shared contract between frontend and backend, so don't rename fields without updating this file. Define each one as a Pydantic model in `backend/app/models/`.
+
+**Field names in JSON are camelCase** (as below), even though Python code uses snake_case. Use a Pydantic alias generator (`alias_generator=to_camel`, `populate_by_name=True`) and return responses by alias.
 
 ```js
 // Senator
@@ -120,6 +135,8 @@ Plain JS objects. These names are the shared contract between frontend and API, 
 { policyId, model, generatedAt, summary, keyPoints: [], sources: [] }
 ```
 
+Dates in API responses are ISO 8601 strings.
+
 ### 5.1 Firestore layout
 
 | Collection path | Doc ID | Contents |
@@ -129,41 +146,49 @@ Plain JS objects. These names are the shared contract between frontend and API, 
 | `votes` | `voteId` | `Vote` + `positions: { [bioguideId]: position }` |
 | `policies` | `policyId` | `Policy` |
 | `policies/{policyId}/articles` | hash of the article URL | `Article` + `fetchedAt` |
-| `aiSummaries` | `{policyId}__{model}` (`:` in the model name becomes `_`) | `AiSummary` |
+| `aiSummaries` | `{policyId}__{model}` (`:` and `/` in the model name become `_`) | `AiSummary` |
 | `meta` | e.g. `ingest` | last ingested vote per congress/session, used for incremental updates |
 
 Rules:
-- **Use the Firebase Admin SDK only on the server** (`lib/db/`). The browser never talks to Firestore directly. Set the security rules to deny all client reads and writes.
-- Store dates as Firestore `Timestamp`s so queries can filter and sort by date.
+- **Only the backend talks to Firestore**, using the Python `firebase-admin` SDK in `backend/app/db/`. Set the security rules to deny all client reads and writes.
+- Store fields in camelCase, matching §5.
+- Store dates as Firestore `Timestamp`s (Python `datetime` with a timezone) so queries can filter and sort by date.
 - Filtering a senator's votes by `position` and sorting by `date` needs a **composite index** on `senators/*/votes` (`position` + `date desc`). Keep it in `firestore.indexes.json`.
 - Use **batched writes** (max 500 operations per batch) during ingest.
-- Keep reads low. Paginate with `limit()` + `startAfter()`, and never read a whole collection on a page load.
+- Keep reads low. Paginate with `limit()` + `start_after()`, and never read a whole collection on a request.
 - Articles are cached for 24 hours. Votes and policies are written once and not re-fetched.
 
 ---
 
-## 6. Local AI agent
+## 6. AI: DeepSeek on our private server
 
-- The model is **DeepSeek**, run locally via **Ollama** (`ollama pull deepseek-r1:8b`). Env vars: `OLLAMA_URL` (default `http://localhost:11434`) and `OLLAMA_MODEL` (default `deepseek-r1:8b`; use a larger tag such as `deepseek-r1:14b` if the machine can handle it).
-- `deepseek-r1` writes its reasoning inside `<think>...</think>` before the answer. **Remove that block** before parsing or storing the output, and never show it to users.
-- Ask for JSON output (Ollama `format: "json"` or a JSON schema) so the result parses straight into `AiSummary`. Validate it, and retry once if it doesn't parse.
-- Call it **only from server route handlers** (`/api/ai/...`), never from the browser.
+- DeepSeek is **hosted on a private server we control**. Only the backend calls it. The browser never sees the server URL or key.
+- Assume an **OpenAI-compatible chat completions API** (`POST {DEEPSEEK_BASE_URL}/chat/completions`). vLLM, Ollama and SGLang all provide one. Call it with `httpx` or the `openai` Python client pointed at `DEEPSEEK_BASE_URL`. If the server uses a different API, update this section.
+- Env vars (backend only): `DEEPSEEK_BASE_URL`, `DEEPSEEK_API_KEY` (sent as a `Bearer` token), and `DEEPSEEK_MODEL` (the model name the server exposes).
+- **Never commit the server address or key.** Don't paste them into issues, PRs or chat logs.
+- If the model is a reasoning model (`deepseek-r1`), its reasoning comes back either in a `<think>...</think>` block or in a separate `reasoning_content` field. **Remove or ignore it** before parsing or storing, and never show it to users.
+- Ask for JSON output (`response_format: {"type": "json_object"}` if the server supports it, otherwise a strict instruction in the prompt). Validate it with the `AiSummary` Pydantic model, and retry once if it doesn't parse.
+- Set a request timeout (e.g. 60 s). The server may be slow or busy.
 - **Grounding:** the prompt may only use our data, meaning the CRS summary, bill title and actions, vote result and tally, how the state's senators voted, and article titles and descriptions. Tell the model to answer only from the provided context and to say "not enough information" otherwise.
 - **Output** must match the `AiSummary` shape: a plain-language summary (about 150 words), 3–5 key points, and a `sources` list of what it used.
 - **Neutral tone:** no opinions, no "good/bad" judgments, no telling the user how to feel or vote.
 - **Cache** summaries in Firestore `aiSummaries`, keyed by `policyId + model`. Regenerate only when the user clicks "Regenerate."
-- **Stream** responses to the UI if easy. If not, show a loading state. Ollama may be slow.
-- If Ollama isn't running, the API returns a clear error (`503` with a message). The rest of the app must still work.
+- **Stream** to the UI with FastAPI `StreamingResponse` if easy. If not, show a loading state.
+- If the DeepSeek server is down or times out, the API returns a clear error (`503` with a message). The rest of the app must still work.
 - Optional stretch goal: "Ask about this policy" chat that uses the same grounding rules.
 
 ---
 
-## 7. Internal API (Next.js route handlers)
+## 7. Backend API (FastAPI)
 
-All return JSON. Errors use the shape `{ error: { code, message } }` with a correct HTTP status.
+- Every route is under `/api`. All return JSON with camelCase fields (§5).
+- Errors use the shape `{ "error": { "code", "message" } }` with a correct HTTP status. Add an exception handler so FastAPI's default `{"detail": ...}` errors are converted to this shape.
+- Enable CORS only for the frontend origin (`FRONTEND_ORIGIN`).
+- FastAPI's auto docs at `/docs` are the live reference. Keep route summaries accurate.
 
 | Method & path | Returns |
 |---|---|
+| `GET /api/health` | `{ status, deepseek: "up" \| "down" }` |
 | `GET /api/states/{stateCode}/senators` | `Senator[]` for that state in the window |
 | `GET /api/senators/{bioguideId}` | `Senator` |
 | `GET /api/senators/{bioguideId}/votes?from=&to=&position=&page=` | paginated `{ items: (Vote & { position })[], page, total }` |
@@ -172,33 +197,48 @@ All return JSON. Errors use the shape `{ error: { code, message } }` with a corr
 | `GET /api/policies/{policyId}/articles` | `Article[]` |
 | `POST /api/ai/summary` body `{ policyId, stateCode?, regenerate? }` | `AiSummary` |
 
+The frontend reads the backend URL from `NEXT_PUBLIC_API_URL` and keeps all fetch calls in `frontend/lib/api.js`.
+
 ---
 
-## 8. Suggested project structure
+## 8. Project structure
 
 ```
-/app
-  page.js                         # home: state picker
-  /state/[stateCode]/page.js
-  /senator/[bioguideId]/page.js
-  /policy/[policyId]/page.js
-  /api/...                        # route handlers from §7
-/components                       # React UI components
-/lib
-  /congress/                      # Congress.gov client
-  /senate/                        # senate.gov XML fetch + parse
-  /legislators/                   # LIS <-> bioguide mapping
-  /news/                          # news provider adapter
-  /ai/                            # Ollama/DeepSeek client + prompt builders
-  /db/                            # firebase-admin init + Firestore read/write helpers
-  dateWindow.js                   # single source for the 4-year window
-/scripts
-  ingest.js                       # pulls senators, votes, policies into Firestore
-/test/fixtures                    # saved sample XML/JSON for parser tests
+/frontend                         # Next.js app (JavaScript)
+  /app
+    page.js                       # home: state picker
+    /state/[stateCode]/page.js
+    /senator/[bioguideId]/page.js
+    /policy/[policyId]/page.js
+  /components                     # React UI components
+  /lib/api.js                     # the only place that calls the backend
+  package.json
+  .env.example
+
+/backend                          # FastAPI app (Python)
+  /app
+    main.py                       # FastAPI app, CORS, error handlers, routers
+    config.py                     # env settings (pydantic-settings)
+    date_window.py                # single source for the 4-year window
+    /routers/                     # one file per resource (states, senators, votes, policies, ai)
+    /models/                      # Pydantic models from §5
+    /services/
+      /congress/                  # Congress.gov client
+      /senate/                    # senate.gov XML fetch + parse
+      /legislators/               # LIS <-> bioguide mapping
+      /news/                      # news provider adapter
+      /ai/                        # DeepSeek client + prompt builders
+    /db/                          # firebase-admin init + Firestore helpers
+  /scripts/ingest.py              # pulls senators, votes, policies into Firestore
+  /tests                          # pytest
+    /fixtures                     # saved sample XML/JSON
+  requirements.txt
+  .env.example
+
 firestore.rules                   # deny all client access
 firestore.indexes.json            # composite indexes
-.env.local                        # secrets (gitignored)
-.env.example                      # var names only, no values
+AGENTS.md
+CLAUDE.md
 ```
 
 ---
@@ -206,16 +246,18 @@ firestore.indexes.json            # composite indexes
 ## 9. Rules for agents
 
 1. **Stay in scope.** If a request touches §2 "Out of scope," stop and flag it.
-2. **JavaScript only.** No TypeScript files and no new languages. (The `main.py` and `.venv` in the repo root are IDE leftovers and not part of the app.)
-3. **No secrets in code or commits.** Read keys from `process.env`. Add any new var to `.env.example`. Never commit a Firebase service-account JSON file.
-4. **External APIs are called only on the server**, inside `lib/` and through route handlers, and always through the cache.
-5. **Use the shared data model (§5) and API contract (§7).** If you must change them, update this file in the same change.
-6. **Use `lib/dateWindow.js`** for the 4-year window everywhere. Don't recompute it ad hoc.
-7. **Neutral, factual UI copy.** Show official vote data as-is.
-8. **Fail gracefully.** If news or AI is down, the vote data still renders.
-9. **Keep changes small and focused**, one feature per branch/PR. Don't refactor teammates' areas without asking.
-10. **Don't add heavy dependencies** without noting why in the PR.
-11. **Test the parsers** (`lib/senate`, ID mapping, policyId normalization) with saved sample XML/JSON fixtures, not live calls.
+2. **Languages:** JavaScript for `frontend/` (no TypeScript), Python for `backend/`. No other languages.
+3. **No secrets in code or commits.** Read them from env vars (`.env.local` for the frontend, `.env` for the backend; both are gitignored). Add any new var to the matching `.env.example`. Never commit a Firebase service-account JSON file or the DeepSeek server URL/key.
+4. **Only the backend calls external services** (Congress.gov, senate.gov, news, Firestore, DeepSeek), and always through the cache. The frontend calls only our FastAPI API, through `frontend/lib/api.js`.
+5. **Only `NEXT_PUBLIC_API_URL` may be exposed to the browser.** Never put a secret in a `NEXT_PUBLIC_` variable.
+6. **Use the shared data model (§5) and API contract (§7).** If you must change them, update this file and both sides (Pydantic model and frontend usage) in the same change.
+7. **Use `backend/app/date_window.py`** for the 4-year window everywhere. Don't recompute it ad hoc.
+8. **Neutral, factual UI copy.** Show official vote data as-is.
+9. **Fail gracefully.** If news or AI is down, the vote data still renders.
+10. **Keep changes small and focused**, one feature per branch/PR. Frontend and backend work can go in separate PRs, as long as the contract in §7 is respected. Don't refactor teammates' areas without asking.
+11. **Python style:** type hints everywhere, `async` route handlers and `httpx.AsyncClient`, format with `ruff` (or `black`). Pin dependencies in `requirements.txt`.
+12. **Don't add heavy dependencies** without noting why in the PR.
+13. **Test the parsers** (`services/senate`, ID mapping, policyId normalization) with pytest and saved fixtures in `backend/tests/fixtures`, not live calls. Mock the DeepSeek client in tests.
 
 ---
 
@@ -223,24 +265,35 @@ firestore.indexes.json            # composite indexes
 
 | Decision | Options | Decided |
 |---|---|---|
-| News provider | NewsAPI.org / GNews / Guardian | _TBD_ |
+| Backend | FastAPI (Python) | **Decided** |
 | Database | Cloud Firestore | **Decided** |
-| AI model | DeepSeek (`deepseek-r1`) via Ollama | **Decided**. Size tag (8b/14b) TBD by hardware |
+| AI model | DeepSeek on our private server | **Decided**. Serving stack (vLLM / Ollama / other) and exact model TBD |
+| News provider | NewsAPI.org / GNews / Guardian | _TBD_ |
 | Styling | Tailwind / CSS Modules | _TBD_ |
 | Ingest strategy | Pre-ingest via script / fetch-on-demand + cache | _TBD_ |
+| Deployment | Where the frontend and backend are hosted | _TBD_ |
 
 ---
 
 ## 11. Environment variables
 
+**Backend** (`backend/.env`, never exposed to the browser):
 ```
 CONGRESS_API_KEY=
 NEWS_API_KEY=
-OLLAMA_URL=http://localhost:11434
-OLLAMA_MODEL=deepseek-r1:8b
 
-# Firebase Admin (from a service account; server only, never NEXT_PUBLIC_)
+DEEPSEEK_BASE_URL=        # e.g. https://<private-server>/v1
+DEEPSEEK_API_KEY=
+DEEPSEEK_MODEL=
+
 FIREBASE_PROJECT_ID=
 FIREBASE_CLIENT_EMAIL=
-FIREBASE_PRIVATE_KEY=   # keep the \n escapes; replace them with real newlines in code
+FIREBASE_PRIVATE_KEY=     # keep the \n escapes; replace them with real newlines in code
+
+FRONTEND_ORIGIN=http://localhost:3000
+```
+
+**Frontend** (`frontend/.env.local`):
+```
+NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
