@@ -65,7 +65,7 @@ Browser ──> Next.js frontend (React, JS) ──> FastAPI backend (Python) �
 | XML parsing | `lxml` or the standard-library `xml.etree.ElementTree` | For senate.gov vote files |
 | Database/cache | **Cloud Firestore** via the Python `firebase-admin` SDK | See §5.1 |
 | AI | **DeepSeek** on our **private server** | See §6 |
-| Backend tests | `pytest` | |
+| Backend testing | Manual, through FastAPI's interactive docs at `/docs` | No automated test suite |
 | Styling | Team's choice (Tailwind recommended) | Keep it consistent once picked |
 
 **The frontend only ever talks to the FastAPI backend.** Secrets (API keys, Firebase credentials, DeepSeek URL/key) live only in the backend.
@@ -249,8 +249,6 @@ The frontend reads the backend URL from `NEXT_PUBLIC_API_URL` and keeps all fetc
       __init__.py                 # firebase-admin init (async Firestore client)
       repository.py               # every Firestore read/write
   /scripts/ingest.py              # pulls senators, votes, policies into Firestore (see --help)
-  /tests                          # pytest
-    /fixtures                     # saved sample XML/CSV/JSON
   requirements.txt
   .env.example
 
@@ -276,7 +274,7 @@ CLAUDE.md
 10. **Keep changes small and focused**, one feature per branch/PR. Frontend and backend work can go in separate PRs, as long as the contract in §7 is respected. Don't refactor teammates' areas without asking.
 11. **Python style:** type hints everywhere, `async` route handlers and `httpx.AsyncClient`, format with `ruff` (or `black`). Pin dependencies in `requirements.txt`.
 12. **Don't add heavy dependencies** without noting why in the PR.
-13. **Test the parsers** (`services/senate`, `services/voteview`, ID mapping, policyId normalization) with pytest and saved fixtures in `backend/tests/fixtures`, not live calls. Use `httpx.MockTransport` for HTTP clients, override `get_repo` with a fake repository for route tests, and mock the DeepSeek client.
+13. **Test manually in the FastAPI UI.** Run `uvicorn app.main:app --reload` and try each endpoint at http://localhost:8000/docs. Use `python -m scripts.ingest --dry-run --limit 3` to check the data sources without writing to Firestore. Don't add an automated test suite unless the team decides to.
 
 ---
 

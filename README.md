@@ -18,7 +18,7 @@ python -m scripts.ingest                       # load ~4 years of Senate votes i
 uvicorn app.main:app --reload
 ```
 
-Tests: `pytest` (from `backend/`).
+Test the API by hand at http://localhost:8000/docs (click an endpoint, then **Try it out**).
 
 API docs: http://localhost:8000/docs
 
