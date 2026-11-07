@@ -46,6 +46,15 @@ class SenatorVote(CamelModel):
     vote_id: str
     bioguide_id: str
     position: Position
+    # Optional display fields so the UI can list every senator without extra calls.
+    name: str | None = None
+    party: str | None = None
+    state: str | None = None
+
+
+class LatestAction(CamelModel):
+    date: str  # YYYY-MM-DD
+    text: str
 
 
 class Policy(CamelModel):
@@ -57,6 +66,7 @@ class Policy(CamelModel):
     short_title: str | None = None
     crs_summary: str | None = None
     congress_gov_url: str | None = None
+    latest_action: LatestAction | None = None
 
 
 class Article(CamelModel):

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<roll_call_vote>
+  <congress>118</congress>
+  <session>1</session>
+  <congress_year>2023</congress_year>
+  <vote_number>42</vote_number>
+  <vote_date>March  29, 2023,  12:03 PM</vote_date>
+  <modify_date>March 29, 2023,  12:20 PM</modify_date>
+  <vote_question_text>On Passage of the Bill (S. 316, As Amended)</vote_question_text>
+  <vote_document_text>A bill to repeal the authorizations for use of military force against Iraq.</vote_document_text>
+  <vote_result_text>Bill Passed (66-30)</vote_result_text>
+  <question>On Passage of the Bill</question>
+  <vote_title>S. 316, As Amended</vote_title>
+  <majority_requirement>1/2</majority_requirement>
+  <vote_result>Bill Passed</vote_result>
+  <document>
+    <document_congress>118</document_congress>
+    <document_type>S.</document_type>
+    <document_number>316</document_number>
+    <document_name>S. 316</document_name>
+    <document_title>A bill to repeal the authorizations for use of military force against Iraq.</document_title>
+    <document_short_title></document_short_title>
+  </document>
+  <count>
+    <yeas>66</yeas>
+    <nays>30</nays>
+    <present></present>
+    <absent>4</absent>
+  </count>
+  <members>
+    <member>
+      <member_full>Cantwell (D-WA)</member_full>
+      <last_name>Cantwell</last_name>
+      <first_name>Maria</first_name>
+      <party>D</party>
+      <state>WA</state>
+      <vote_cast>Yea</vote_cast>
+      <lis_member_id>S275</lis_member_id>
+    </member>
+    <member>
+      <member_full>Feinstein (D-CA)</member_full>
+      <last_name>Feinstein</last_name>
+      <first_name>Dianne</first_name>
+      <party>D</party>
+      <state>CA</state>
+      <vote_cast>Not Voting</vote_cast>
+      <lis_member_id>S221</lis_member_id>
+    </member>
+    <member>
+      <member_full>McConnell (R-KY)</member_full>
+      <last_name>McConnell</last_name>
+      <first_name>Mitch</first_name>
+      <party>R</party>
+      <state>KY</state>
+      <vote_cast>Nay</vote_cast>
+      <lis_member_id>S174</lis_member_id>
+    </member>
+  </members>
+</roll_call_vote>

@@ -93,14 +93,23 @@ Browser ──> Next.js frontend (React, JS) ──> FastAPI backend (Python) �
   (example: `vote_119_1_00042.xml`)
 - In these files, senators are identified by **`lis_member_id`** (like `S354`), **not** bioguide ID.
 - No API key is needed. Be polite: throttle requests and cache aggressively. Past votes never change.
+- **senate.gov often blocks automated requests (HTTP 403).** The ingest tries senate.gov first and, if blocked, falls back to Voteview for that session (4.2b). Do not try to get around the block (no fake browser user agents).
+
+### 4.2b Voteview (fallback for votes)
+- UCLA's public roll-call dataset, built from official Senate records. No key needed. Files per Congress:
+  `https://voteview.com/static/data/out/{rollcalls|votes|members}/S{congress}_{kind}.csv`
+- `clerk_rollnumber` is the official Senate vote number, so vote IDs match senate.gov (`119-1-00042`).
+- Cast codes: 1 = Yea, 6 = Nay, 7/8 = Present, 2–5 and 9 = Not Voting (paired/announced votes are not cast votes), 0 = not a member.
+- `members` CSV has `bioguide_id`, so no LIS mapping is needed. Voteview has no time of day; dates are stored as noon US Eastern.
+- Code: `backend/app/services/voteview/`.
 
 ### 4.3 ID mapping (LIS ↔ Bioguide)
 - Use the public `unitedstates/congress-legislators` dataset (`legislators-current` and `legislators-historical`, JSON or YAML). It includes `id.lis`, `id.bioguide` and term/state info, and it also covers senators who left office during the window.
 - **Canonical senator ID in our app = `bioguideId`.** Convert LIS IDs during ingest.
 
 ### 4.4 News articles
-- Use a news search API behind one adapter, `backend/app/services/news/`, so the provider can be swapped. Candidates are NewsAPI.org, GNews and The Guardian Open Platform. **Decide as a team (§10).**
-- Env var `NEWS_API_KEY`. Search by bill title, short title or bill number.
+- Provider: **GNews** (`https://gnews.io/api/v4/search`, free tier 100 requests/day), behind one adapter in `backend/app/services/news/` so it can be swapped.
+- Env var `NEWS_API_KEY`. The query is the short title, the nominee's name for nominations, or the bill number (e.g. `"S. 316" Senate`) when the title is a long official one.
 - Store only the title, source, URL, published date and short description. **Do not scrape or store full article text.** Link out to the publisher.
 
 ### Linking a vote to a policy
@@ -122,11 +131,12 @@ These are the shared contract between frontend and backend, so don't rename fiel
 { voteId /* "119-1-00042" */, congress, session, voteNumber, date, question, result,
   policyId /* nullable */, tally: { yea, nay, present, notVoting } }
 
-// SenatorVote
-{ voteId, bioguideId, position /* "Yea" | "Nay" | "Present" | "Not Voting" */ }
+// SenatorVote (name, party, state are optional display fields)
+{ voteId, bioguideId, position /* "Yea" | "Nay" | "Present" | "Not Voting" */, name, party, state }
 
 // Policy
-{ policyId, congress, type, number, title, shortTitle, crsSummary, congressGovUrl }
+{ policyId, congress, type, number, title, shortTitle, crsSummary, congressGovUrl,
+  latestAction /* { date: "YYYY-MM-DD", text } | null */ }
 
 // Article
 { policyId, title, source, url, publishedAt, description }
@@ -143,8 +153,8 @@ Dates in API responses are ISO 8601 strings.
 |---|---|---|
 | `senators` | `bioguideId` | `Senator` |
 | `senators/{bioguideId}/votes` | `voteId` | `Vote` fields copied in + `position` (lets the senator page load with one query) |
-| `votes` | `voteId` | `Vote` + `positions: { [bioguideId]: position }` |
-| `policies` | `policyId` | `Policy` |
+| `votes` | `voteId` | `Vote` + `positions: { [bioguideId]: position }` + `members: SenatorVote[]` |
+| `policies` | `policyId` | `Policy` + `articlesFetchedAt` |
 | `policies/{policyId}/articles` | hash of the article URL | `Article` + `fetchedAt` |
 | `aiSummaries` | `{policyId}__{model}` (`:` and `/` in the model name become `_`) | `AiSummary` |
 | `meta` | e.g. `ingest` | last ingested vote per congress/session, used for incremental updates |
@@ -153,9 +163,11 @@ Rules:
 - **Only the backend talks to Firestore**, using the Python `firebase-admin` SDK in `backend/app/db/`. Set the security rules to deny all client reads and writes.
 - Store fields in camelCase, matching §5.
 - Store dates as Firestore `Timestamp`s (Python `datetime` with a timezone) so queries can filter and sort by date.
-- Filtering a senator's votes by `position` and sorting by `date` needs a **composite index** on `senators/*/votes` (`position` + `date desc`). Keep it in `firestore.indexes.json`.
+- Vote lists sort by `date desc, voteNumber desc` and need the **composite indexes** in `firestore.indexes.json` (deploy them with `firebase deploy --only firestore:indexes`).
+- All Firestore code lives in `backend/app/db/repository.py`. Routers get it through the `get_repo` dependency, which returns `503` if Firebase isn't configured.
 - Use **batched writes** (max 500 operations per batch) during ingest.
-- Keep reads low. Paginate with `limit()` + `start_after()`, and never read a whole collection on a request.
+- Keep reads low and never read a whole collection on a request. Senator vote pages use `offset()` + `limit()` so the API can take a page number (at most ~1,600 votes per senator, so the skipped reads stay small).
+- **Write cost:** each vote is ~101 writes (the vote + one copy per senator), so a full 4-year ingest is roughly 270,000 writes. That's over the free Spark plan's 20,000 writes/day; use the Blaze plan (about $0.50 for the full load) or ingest over several days with `--congress`.
 - Articles are cached for 24 hours. Votes and policies are written once and not re-fetched.
 
 ---
@@ -191,10 +203,10 @@ Rules:
 | `GET /api/health` | `{ status, deepseek: "up" \| "down" }` |
 | `GET /api/states/{stateCode}/senators` | `Senator[]` for that state in the window |
 | `GET /api/senators/{bioguideId}` | `Senator` |
-| `GET /api/senators/{bioguideId}/votes?from=&to=&position=&page=` | paginated `{ items: (Vote & { position })[], page, total }` |
-| `GET /api/votes/{voteId}` | `Vote` + all `SenatorVote`s |
-| `GET /api/policies/{policyId}` | `Policy` + its `Vote[]` |
-| `GET /api/policies/{policyId}/articles` | `Article[]` |
+| `GET /api/senators/{bioguideId}/votes?from=&to=&position=&page=&pageSize=` | `{ items: (Vote & { position })[], page, pageSize, total }`. Dates are `YYYY-MM-DD`, clamped to the window; `pageSize` defaults to 25, max 100 |
+| `GET /api/votes/{voteId}` | `Vote` + `senatorVotes: SenatorVote[]` (sorted by state, then name) |
+| `GET /api/policies/{policyId}` | `Policy` + `votes: Vote[]` (newest first) |
+| `GET /api/policies/{policyId}/articles` | `Article[]`, newest first. Cached 24 h; stale cache is served if GNews fails, otherwise `503` |
 | `POST /api/ai/summary` body `{ policyId, stateCode?, regenerate? }` | `AiSummary` |
 
 The frontend reads the backend URL from `NEXT_PUBLIC_API_URL` and keeps all fetch calls in `frontend/lib/api.js`.
@@ -219,19 +231,26 @@ The frontend reads the backend URL from `NEXT_PUBLIC_API_URL` and keeps all fetc
   /app
     main.py                       # FastAPI app, CORS, error handlers, routers
     config.py                     # env settings (pydantic-settings)
+    deps.py                       # FastAPI dependencies (get_repo, get_http)
     date_window.py                # single source for the 4-year window
+    states.py                     # the 50 state codes
     /routers/                     # one file per resource (states, senators, votes, policies, ai)
     /models/                      # Pydantic models from §5
     /services/
+      http.py                     # shared httpx client (User-Agent, timeouts)
+      vote_types.py               # source-neutral ParsedVote + policyId helpers
       /congress/                  # Congress.gov client
       /senate/                    # senate.gov XML fetch + parse
-      /legislators/               # LIS <-> bioguide mapping
-      /news/                      # news provider adapter
-      /ai/                        # DeepSeek client + prompt builders
-    /db/                          # firebase-admin init + Firestore helpers
-  /scripts/ingest.py              # pulls senators, votes, policies into Firestore
+      /voteview/                  # Voteview CSV fallback
+      /legislators/               # senators in window + LIS <-> bioguide mapping
+      /news/                      # GNews adapter
+      /ai/                        # DeepSeek client + prompt builders (AI teammate)
+    /db/
+      __init__.py                 # firebase-admin init (async Firestore client)
+      repository.py               # every Firestore read/write
+  /scripts/ingest.py              # pulls senators, votes, policies into Firestore (see --help)
   /tests                          # pytest
-    /fixtures                     # saved sample XML/JSON
+    /fixtures                     # saved sample XML/CSV/JSON
   requirements.txt
   .env.example
 
@@ -257,7 +276,7 @@ CLAUDE.md
 10. **Keep changes small and focused**, one feature per branch/PR. Frontend and backend work can go in separate PRs, as long as the contract in §7 is respected. Don't refactor teammates' areas without asking.
 11. **Python style:** type hints everywhere, `async` route handlers and `httpx.AsyncClient`, format with `ruff` (or `black`). Pin dependencies in `requirements.txt`.
 12. **Don't add heavy dependencies** without noting why in the PR.
-13. **Test the parsers** (`services/senate`, ID mapping, policyId normalization) with pytest and saved fixtures in `backend/tests/fixtures`, not live calls. Mock the DeepSeek client in tests.
+13. **Test the parsers** (`services/senate`, `services/voteview`, ID mapping, policyId normalization) with pytest and saved fixtures in `backend/tests/fixtures`, not live calls. Use `httpx.MockTransport` for HTTP clients, override `get_repo` with a fake repository for route tests, and mock the DeepSeek client.
 
 ---
 
@@ -268,9 +287,10 @@ CLAUDE.md
 | Backend | FastAPI (Python) | **Decided** |
 | Database | Cloud Firestore | **Decided** |
 | AI model | DeepSeek on our private server | **Decided**. Serving stack (vLLM / Ollama / other) and exact model TBD |
-| News provider | NewsAPI.org / GNews / Guardian | _TBD_ |
+| News provider | GNews | **Decided** |
+| Vote source | senate.gov XML, falling back to Voteview when blocked | **Decided** |
+| Ingest strategy | Pre-ingest with `backend/scripts/ingest.py`; API reads only Firestore (plus GNews for articles) | **Decided** |
 | Styling | Tailwind / CSS Modules | _TBD_ |
-| Ingest strategy | Pre-ingest via script / fetch-on-demand + cache | _TBD_ |
 | Deployment | Where the frontend and backend are hosted | _TBD_ |
 
 ---

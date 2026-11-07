@@ -1,0 +1,556 @@
+[
+ {
+  "id": {
+   "bioguide": "C000127",
+   "thomas": "00172",
+   "lis": "S275",
+   "govtrack": 300018,
+   "opensecrets": "N00007836",
+   "votesmart": 27122,
+   "fec": [
+    "S8WA00194",
+    "H2WA01054"
+   ],
+   "cspan": 26137,
+   "wikipedia": "Maria Cantwell",
+   "house_history": 10608,
+   "ballotpedia": "Maria Cantwell",
+   "maplight": 544,
+   "icpsr": 39310,
+   "wikidata": "Q22250",
+   "google_entity_id": "kg:/m/01x68t",
+   "pictorial": 13398
+  },
+  "name": {
+   "first": "Maria",
+   "last": "Cantwell",
+   "official_full": "Maria Cantwell"
+  },
+  "bio": {
+   "birthday": "1958-10-13",
+   "gender": "F"
+  },
+  "terms": [
+   {
+    "type": "rep",
+    "start": "1993-01-05",
+    "end": "1995-01-03",
+    "state": "WA",
+    "district": 1,
+    "party": "Democrat"
+   },
+   {
+    "type": "sen",
+    "start": "2001-01-03",
+    "end": "2007-01-03",
+    "state": "WA",
+    "class": 1,
+    "party": "Democrat",
+    "url": "http://cantwell.senate.gov"
+   },
+   {
+    "type": "sen",
+    "start": "2007-01-04",
+    "end": "2013-01-03",
+    "state": "WA",
+    "class": 1,
+    "party": "Democrat",
+    "url": "http://cantwell.senate.gov",
+    "address": "311 HART SENATE OFFICE BUILDING WASHINGTON DC 20510",
+    "phone": "202-224-3441",
+    "fax": "202-228-0514",
+    "contact_form": "http://www.cantwell.senate.gov/contact/",
+    "office": "311 Hart Senate Office Building"
+   },
+   {
+    "type": "sen",
+    "start": "2013-01-03",
+    "end": "2019-01-03",
+    "state": "WA",
+    "party": "Democrat",
+    "class": 1,
+    "url": "https://www.cantwell.senate.gov",
+    "address": "511 Hart Senate Office Building Washington DC 20510",
+    "phone": "202-224-3441",
+    "fax": "202-228-0514",
+    "contact_form": "http://www.cantwell.senate.gov/public/index.cfm/email-maria",
+    "office": "511 Hart Senate Office Building",
+    "state_rank": "junior",
+    "rss_url": "http://www.cantwell.senate.gov/public/index.cfm/rss/feed"
+   },
+   {
+    "type": "sen",
+    "start": "2019-01-03",
+    "end": "2025-01-03",
+    "state": "WA",
+    "class": 1,
+    "party": "Democrat",
+    "state_rank": "junior",
+    "url": "https://www.cantwell.senate.gov",
+    "rss_url": "http://www.cantwell.senate.gov/public/index.cfm/rss/feed",
+    "contact_form": "https://www.cantwell.senate.gov/public/index.cfm/email-maria",
+    "address": "511 Hart Senate Office Building Washington DC 20510",
+    "office": "511 Hart Senate Office Building",
+    "phone": "202-224-3441"
+   },
+   {
+    "type": "sen",
+    "start": "2025-01-03",
+    "end": "2031-01-03",
+    "state": "WA",
+    "class": 1,
+    "state_rank": "junior",
+    "party": "Democrat",
+    "url": "https://www.cantwell.senate.gov",
+    "rss_url": "http://www.cantwell.senate.gov/public/index.cfm/rss/feed",
+    "contact_form": "https://www.cantwell.senate.gov/public/index.cfm/email-maria",
+    "address": "511 Hart Senate Office Building Washington DC 20510",
+    "office": "511 Hart Senate Office Building",
+    "phone": "202-224-3441"
+   }
+  ]
+ },
+ {
+  "id": {
+   "bioguide": "B000575",
+   "thomas": "01464",
+   "lis": "S342",
+   "govtrack": 400034,
+   "opensecrets": "N00005195",
+   "votesmart": 418,
+   "fec": [
+    "H6MO07128",
+    "S0MO00183"
+   ],
+   "cspan": 45465,
+   "wikipedia": "Roy Blunt",
+   "house_history": 9520,
+   "ballotpedia": "Roy Blunt",
+   "maplight": 153,
+   "icpsr": 29735,
+   "wikidata": "Q1525924",
+   "google_entity_id": "kg:/m/034fn4"
+  },
+  "name": {
+   "first": "Roy",
+   "last": "Blunt",
+   "official_full": "Roy Blunt"
+  },
+  "bio": {
+   "birthday": "1950-01-10",
+   "gender": "M"
+  },
+  "leadership_roles": [
+   {
+    "title": "Senate Republican Policy Committee Chair",
+    "chamber": "senate",
+    "start": "2019-01-03",
+    "end": "2021-01-03"
+   },
+   {
+    "title": "Senate Republican Policy Committee Chair",
+    "chamber": "senate",
+    "start": "2021-01-03",
+    "end": "2023-01-03"
+   }
+  ],
+  "terms": [
+   {
+    "type": "rep",
+    "start": "1997-01-07",
+    "end": "1999-01-03",
+    "state": "MO",
+    "district": 7,
+    "party": "Republican"
+   },
+   {
+    "type": "rep",
+    "start": "1999-01-06",
+    "end": "2001-01-03",
+    "state": "MO",
+    "district": 7,
+    "party": "Republican"
+   },
+   {
+    "type": "rep",
+    "start": "2001-01-03",
+    "end": "2003-01-03",
+    "state": "MO",
+    "district": 7,
+    "party": "Republican"
+   },
+   {
+    "type": "rep",
+    "start": "2003-01-07",
+    "end": "2005-01-03",
+    "state": "MO",
+    "district": 7,
+    "party": "Republican",
+    "url": "http://www.house.gov/blunt"
+   },
+   {
+    "type": "rep",
+    "start": "2005-01-04",
+    "end": "2007-01-03",
+    "state": "MO",
+    "district": 7,
+    "party": "Republican",
+    "url": "http://www.house.gov/blunt"
+   },
+   {
+    "type": "rep",
+    "start": "2007-01-04",
+    "end": "2009-01-03",
+    "state": "MO",
+    "district": 7,
+    "party": "Republican",
+    "url": "http://www.house.gov/blunt"
+   },
+   {
+    "type": "rep",
+    "start": "2009-01-06",
+    "end": "2011-01-03",
+    "state": "MO",
+    "district": 7,
+    "party": "Republican",
+    "url": "http://blunt.house.gov/"
+   },
+   {
+    "type": "sen",
+    "start": "2011-01-05",
+    "end": "2017-01-03",
+    "state": "MO",
+    "class": 3,
+    "party": "Republican",
+    "url": "http://www.blunt.senate.gov",
+    "address": "260 Russell Senate Office Building Washington DC 20510",
+    "phone": "202-224-5721",
+    "contact_form": "http://www.blunt.senate.gov/public/index.cfm/contact-form?p=contact-roy",
+    "office": "260 Russell Senate Office Building",
+    "state_rank": "junior",
+    "rss_url": "http://www.blunt.senate.gov/public/?a=rss.feed",
+    "fax": "202-224-8149"
+   },
+   {
+    "type": "sen",
+    "start": "2017-01-03",
+    "end": "2023-01-03",
+    "state": "MO",
+    "class": 3,
+    "state_rank": "senior",
+    "party": "Republican",
+    "url": "https://www.blunt.senate.gov",
+    "rss_url": "http://www.blunt.senate.gov/public/?a=rss.feed",
+    "address": "260 Russell Senate Office Building Washington DC 20510",
+    "office": "260 Russell Senate Office Building",
+    "phone": "202-224-5721",
+    "contact_form": "https://www.blunt.senate.gov/public/index.cfm/contact-roy",
+    "fax": "202-224-8149"
+   }
+  ]
+ },
+ {
+  "id": {
+   "bioguide": "F000062",
+   "thomas": "01332",
+   "lis": "S221",
+   "govtrack": 300043,
+   "opensecrets": "N00007364",
+   "votesmart": 53273,
+   "fec": [
+    "S0CA00199"
+   ],
+   "cspan": 13061,
+   "wikipedia": "Dianne Feinstein",
+   "house_history": 13044,
+   "ballotpedia": "Dianne Feinstein",
+   "maplight": 567,
+   "icpsr": 49300,
+   "wikidata": "Q230733",
+   "google_entity_id": "kg:/m/01gqws"
+  },
+  "name": {
+   "first": "Dianne",
+   "last": "Feinstein",
+   "official_full": "Dianne Feinstein"
+  },
+  "bio": {
+   "birthday": "1933-06-22",
+   "gender": "F"
+  },
+  "terms": [
+   {
+    "type": "sen",
+    "start": "1992-11-04",
+    "end": "1995-01-03",
+    "state": "CA",
+    "class": 1,
+    "party": "Democrat"
+   },
+   {
+    "type": "sen",
+    "start": "1995-01-04",
+    "end": "2001-01-03",
+    "state": "CA",
+    "class": 1,
+    "party": "Democrat"
+   },
+   {
+    "type": "sen",
+    "start": "2001-01-03",
+    "end": "2007-01-03",
+    "state": "CA",
+    "class": 1,
+    "party": "Democrat",
+    "url": "http://feinstein.senate.gov"
+   },
+   {
+    "type": "sen",
+    "start": "2007-01-04",
+    "end": "2013-01-03",
+    "state": "CA",
+    "class": 1,
+    "party": "Democrat",
+    "url": "http://feinstein.senate.gov",
+    "address": "331 HART SENATE OFFICE BUILDING WASHINGTON DC 20510",
+    "phone": "202-224-3841",
+    "fax": "202-228-3954",
+    "contact_form": "http://www.feinstein.senate.gov/public/index.cfm/e-mail-me",
+    "office": "331 Hart Senate Office Building"
+   },
+   {
+    "type": "sen",
+    "start": "2013-01-03",
+    "end": "2019-01-03",
+    "state": "CA",
+    "party": "Democrat",
+    "class": 1,
+    "url": "https://www.feinstein.senate.gov",
+    "address": "331 Hart Senate Office Building Washington DC 20510",
+    "phone": "202-224-3841",
+    "fax": "202-228-3954",
+    "contact_form": "https://www.feinstein.senate.gov/public/index.cfm/e-mail-me",
+    "office": "331 Hart Senate Office Building",
+    "state_rank": "senior",
+    "rss_url": "http://www.feinstein.senate.gov/public/?a=rss.feed"
+   },
+   {
+    "type": "sen",
+    "start": "2019-01-03",
+    "end": "2023-09-28",
+    "state": "CA",
+    "class": 1,
+    "party": "Democrat",
+    "state_rank": "senior",
+    "url": "https://www.feinstein.senate.gov",
+    "rss_url": "http://www.feinstein.senate.gov/public/?a=rss.feed",
+    "contact_form": "https://www.feinstein.senate.gov/public/index.cfm/e-mail-me",
+    "address": "331 Hart Senate Office Building Washington DC 20510",
+    "office": "331 Hart Senate Office Building",
+    "phone": "202-224-3841"
+   }
+  ]
+ },
+ {
+  "id": {
+   "bioguide": "B000226",
+   "govtrack": 401222,
+   "icpsr": 507,
+   "wikipedia": "Richard Bassett (Delaware politician)",
+   "wikidata": "Q518823",
+   "google_entity_id": "kg:/m/02pz46"
+  },
+  "name": {
+   "first": "Richard",
+   "last": "Bassett"
+  },
+  "bio": {
+   "birthday": "1745-04-02",
+   "gender": "M"
+  },
+  "terms": [
+   {
+    "type": "sen",
+    "start": "1789-03-04",
+    "end": "1793-03-03",
+    "state": "DE",
+    "class": 2,
+    "party": "Anti-Administration"
+   }
+  ]
+ },
+ {
+  "id": {
+   "bioguide": "M000355",
+   "thomas": "01395",
+   "lis": "S174",
+   "govtrack": 300072,
+   "opensecrets": "N00003389",
+   "votesmart": 53298,
+   "icpsr": 14921,
+   "fec": [
+    "S2KY00012"
+   ],
+   "cspan": 2351,
+   "wikipedia": "Mitch McConnell",
+   "ballotpedia": "Mitch McConnell",
+   "maplight": 593,
+   "wikidata": "Q355522",
+   "google_entity_id": "kg:/m/01z6ls",
+   "pictorial": 13357
+  },
+  "name": {
+   "first": "Mitch",
+   "last": "McConnell",
+   "official_full": "Mitch McConnell"
+  },
+  "bio": {
+   "birthday": "1942-02-20",
+   "gender": "M"
+  },
+  "leadership_roles": [
+   {
+    "title": "Senate Minority Leader",
+    "chamber": "senate",
+    "start": "2007-01-04",
+    "end": "2009-01-06"
+   },
+   {
+    "title": "Senate Minority Leader",
+    "chamber": "senate",
+    "start": "2009-01-06",
+    "end": "2011-01-05"
+   },
+   {
+    "title": "Senate Minority Leader",
+    "chamber": "senate",
+    "start": "2011-01-05",
+    "end": "2013-01-03"
+   },
+   {
+    "title": "Senate Minority Leader",
+    "chamber": "senate",
+    "start": "2013-01-03",
+    "end": "2015-01-03"
+   },
+   {
+    "title": "Senate Majority Leader",
+    "chamber": "senate",
+    "start": "2015-01-03",
+    "end": "2017-01-03"
+   },
+   {
+    "title": "Senate Majority Leader",
+    "chamber": "senate",
+    "start": "2017-01-03",
+    "end": "2019-01-03"
+   },
+   {
+    "title": "Senate Majority Leader",
+    "chamber": "senate",
+    "start": "2019-01-03",
+    "end": "2021-01-03"
+   },
+   {
+    "title": "Senate Majority Leader",
+    "chamber": "senate",
+    "start": "2021-01-03",
+    "end": "2021-01-20"
+   },
+   {
+    "title": "Senate Minority Leader",
+    "chamber": "senate",
+    "start": "2021-01-20",
+    "end": "2023-01-03"
+   },
+   {
+    "title": "Senate Minority Leader",
+    "chamber": "senate",
+    "start": "2023-01-03",
+    "end": "2025-01-03"
+   }
+  ],
+  "terms": [
+   {
+    "type": "sen",
+    "start": "1985-01-03",
+    "end": "1991-01-03",
+    "state": "KY",
+    "class": 2,
+    "party": "Republican"
+   },
+   {
+    "type": "sen",
+    "start": "1991-01-03",
+    "end": "1997-01-03",
+    "state": "KY",
+    "class": 2,
+    "party": "Republican"
+   },
+   {
+    "type": "sen",
+    "start": "1997-01-07",
+    "end": "2003-01-03",
+    "state": "KY",
+    "class": 2,
+    "party": "Republican"
+   },
+   {
+    "type": "sen",
+    "start": "2003-01-07",
+    "end": "2009-01-03",
+    "state": "KY",
+    "class": 2,
+    "party": "Republican",
+    "url": "http://mcconnell.senate.gov/"
+   },
+   {
+    "type": "sen",
+    "start": "2009-01-06",
+    "end": "2015-01-03",
+    "state": "KY",
+    "class": 2,
+    "party": "Republican",
+    "url": "http://www.mcconnell.senate.gov",
+    "address": "317 Russell Senate Office Building Washington DC 20510",
+    "phone": "202-224-2541",
+    "fax": "202-224-2499",
+    "contact_form": "http://www.mcconnell.senate.gov/public/index.cfm?p=ContactForm",
+    "office": "317 Russell Senate Office Building",
+    "state_rank": "senior",
+    "rss_url": "http://www.mcconnell.senate.gov/public/?a=rss.feed"
+   },
+   {
+    "type": "sen",
+    "start": "2015-01-06",
+    "end": "2021-01-03",
+    "state": "KY",
+    "class": 2,
+    "party": "Republican",
+    "url": "https://www.mcconnell.senate.gov",
+    "address": "317 Russell Senate Office Building Washington DC 20510",
+    "phone": "202-224-2541",
+    "fax": "202-224-2499",
+    "contact_form": "http://www.mcconnell.senate.gov/public/index.cfm?p=contact",
+    "office": "317 Russell Senate Office Building",
+    "state_rank": "senior",
+    "rss_url": "http://www.mcconnell.senate.gov/public/?a=rss.feed"
+   },
+   {
+    "type": "sen",
+    "start": "2021-01-03",
+    "end": "2027-01-03",
+    "state": "KY",
+    "class": 2,
+    "state_rank": "senior",
+    "party": "Republican",
+    "url": "https://www.mcconnell.senate.gov",
+    "rss_url": "http://www.mcconnell.senate.gov/public/?a=rss.feed",
+    "contact_form": "https://www.mcconnell.senate.gov/public/index.cfm?p=contact",
+    "address": "317 Russell Senate Office Building Washington DC 20510",
+    "office": "317 Russell Senate Office Building",
+    "phone": "202-224-2541"
+   }
+  ]
+ }
+]

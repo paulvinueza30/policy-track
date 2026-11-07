@@ -1,3 +1,4 @@
+"""DeepSeek summary endpoint. Owned by the AI teammate (AGENTS.md §6); not implemented here."""
 from fastapi import APIRouter, HTTPException
 
 router = APIRouter(tags=["ai"])

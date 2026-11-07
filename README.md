@@ -13,8 +13,12 @@ cd backend
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env   # fill in the values
+python -m scripts.ingest --dry-run --limit 3   # check the data sources (writes nothing)
+python -m scripts.ingest                       # load ~4 years of Senate votes into Firestore
 uvicorn app.main:app --reload
 ```
+
+Tests: `pytest` (from `backend/`).
 
 API docs: http://localhost:8000/docs
 
