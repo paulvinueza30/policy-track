@@ -18,7 +18,16 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## VoteLens preview
+
+From this directory, run `npm ci` and `npm run dev`. The preview runs without the FastAPI server.
+
+- Start at the home page and select a state on the map or with the state picker.
+- Open either fictional senator in the Texas demo. Switch to **All sample votes** to filter by position or date.
+- Open a sample policy to see its tally, related headline, and example AI response.
+- At mobile widths, use the state picker and bottom navigation.
+
+Votes, headlines, and AI responses are fictional demo content. The Texas profiles are fictional too. Other states show an empty delegation until data is available.
 
 ## Learn More
 

@@ -1,26 +1,49 @@
-import { Geist, Geist_Mono } from "next/font/google";
+import Link from "next/link";
+import { Lato, Libre_Baskerville } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const bodyFont = Lato({ subsets: ["latin"], weight: ["400", "700", "900"], variable: "--font-body" });
+const headlineFont = Libre_Baskerville({ subsets: ["latin"], weight: ["400", "700"], variable: "--font-headline" });
 
 export const metadata = {
-  title: "Senate Vote Tracker",
-  description: "See how your state's senators voted over the last 4 years.",
+  title: "VoteLens | U.S. Senate Vote Tracker",
+  description: "Explore U.S. Senate voting records and policy in plain English.",
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+      <body className={bodyFont.variable + " " + headlineFont.variable}>
+        <aside className="notice">
+          <div className="frame notice-inner">
+            <span className="demo-label">Demo Content &amp; Prototype</span>
+            <span>Fictional senators, votes, headlines and AI examples.</span>
+          </div>
+        </aside>
+        <header className="site-header">
+          <div className="frame header-inner">
+            <Link className="brand" href="/">
+              <span className="monogram" aria-hidden="true"><b>V</b>L</span>
+              <span>
+                <strong>VoteLens</strong> <span className="tag">Civic</span>
+                <small>U.S. Senate votes in plain English</small>
+              </span>
+            </Link>
+            <nav className="site-nav" aria-label="Main navigation">
+              <Link href="/#explore">Explore</Link>
+              <Link href="/#voting-record">Votes</Link>
+              <Link href="/#news">News</Link>
+            </nav>
+          </div>
+        </header>
         {children}
+        <footer className="site-footer" id="about">
+          <div className="frame">
+            <strong>VoteLens</strong>
+            <p>A Policy Track prototype for exploring the U.S. Senate.</p>
+            <p>Sample records, headlines and AI responses are fictional demo content.</p>
+          </div>
+        </footer>
       </body>
     </html>
   );
