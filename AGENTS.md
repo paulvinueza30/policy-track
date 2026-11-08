@@ -44,9 +44,9 @@ A regular person who wants to know, without spin, how their senators and represe
 - Non-voting House delegates and the Resident Commissioner (DC, PR, GU, VI, AS, MP) as members. They aren't listed, but they do count in the official tally on some amendment votes (Committee of the Whole), so a vote's tally can be up to 6 higher than the members listed
 - Elections of the Speaker (20 roll calls in the window). Members vote for a person, not Yea/Nay, so these don't fit the vote model. The ingest skips them
 - Voice votes and other votes with no recorded individual positions
-- ZIP-code-to-district lookup (the UI links to house.gov instead; see §12)
+- ZIP lookup is now in scope by explicit user request; return candidate districts and require confirmation.
 - Maps of past district boundaries (the map shows the current Congress only)
-- User accounts, login, saved favorites, notifications
+- Notifications
 - "Scores," grades, rankings, or any language that tells users which way to vote
 - Predicting future votes
 - Campaign finance, lobbying, polling data
@@ -527,3 +527,14 @@ Add these to `VOTE_TYPES` in `lib/display.js`. **Order matters: test the specifi
 - The backend fills `member.photoUrl` (§4.6). `Portrait` then shows the image when `photoUrl` exists and falls back to initials when it's `null` or the image fails to load.
 - Use `alt=""` when the name is already shown beside the photo, and add the photo host to `images.remotePatterns` in `next.config.mjs` if using `next/image`.
 - Never build a photo URL or call a photo service in the frontend. Only use `photoUrl` from our API.
+
+## 13. RealNews account and feed integration
+The user approved the RealNews brand and expanded scope to accounts, Google SSO, personal feeds and ZIP lookup.
+- Google Identity Services is an explicit exception to frontend external-service restrictions. Its public web client ID is server-configured as GOOGLE_CLIENT_ID and passed to the sign-in page; no client secret is needed.
+- Next.js /api/session/{login,logout,me,preferences,feed} bridges authenticated requests. The ID token stays in an HttpOnly, SameSite=Lax, HTTPS-secure cookie, expires within one hour, and is never put in localStorage. POST requires same-origin JSON.
+- FastAPI verifies Google signature, issuer, audience and expiration, using sub as the private account owner. No client-supplied user IDs.
+- GET /api/account returns identity and preferences; PUT /api/account/preferences saves {state,district,following,reactions}. Maximum 20 followed members and 200 private policy reactions. No political scores or inferred rankings.
+- GET /api/account/feed?scope=local|national|following&page=&pageSize= returns {items,page,hasMore,needsDistrict?}. Local means federal votes involving the selected delegation, not local-government news. Feed reads use existing runtime four-year date limits and bounded queries; page capped at 20.
+- Firestore accounts/{verifiedGoogleSubject} stores preferences; existing deny-all client rules remain in place. Backend repository owns all reads/writes.
+- GET /api/districts/zip/{fiveDigits} uses the HUD USPS type-5 crosswalk, 2025 Q4 for the 119th Congress. Backend-only HUD_API_KEY. Cached 24 hours in bounded process memory. ZIPs can span multiple districts; user confirmation required. No ZIP stored in account preferences.
+- Sign-in and lookup fail visibly when configuration is absent. No prototype Google login, fake district assignment, fabricated news, votes or AI.

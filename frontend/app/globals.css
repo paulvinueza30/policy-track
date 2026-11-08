@@ -210,3 +210,28 @@ select, input[type="date"] { min-width: 0; width: 100%; padding: .45rem .55rem; 
   .district-map { min-height: 220px; }
   .member-card { padding-block: .85rem; }
 }
+
+.account-grid { display:grid; grid-template-columns:1fr 1fr; gap:3rem; align-items:start; }
+.account-intro { padding:2rem 0; display:grid; gap:1.4rem; }
+.account-intro h1 { max-width:15ch; }
+.account-intro ul { display:grid; gap:1rem; padding-left:1.2rem; color:var(--muted); }
+.sign-in,.district-lookup,.followed-members { display:grid; gap:1rem; padding:1.5rem; }
+.account-note { font-size:.82rem; color:var(--muted); }
+.lookup-form,.district-results { display:grid; gap:.5rem; }
+input:not([type="hidden"]) { min-width:0; width:100%; border:1px solid var(--line); border-radius:.45rem; padding:.6rem; font:inherit; }
+.feed-heading { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:2rem; }
+.feed-heading p { margin-block:.6rem; }
+.feed-layout { display:grid; grid-template-columns:minmax(0,2fr) minmax(18rem,1fr); gap:1.5rem; align-items:start; }
+.segments button { padding:.65rem .8rem; border:0; border-radius:.4rem; background:transparent; color:var(--teal); font-weight:700; cursor:pointer; }
+.segments button[aria-pressed="true"] { background:var(--ink); color:white; }
+button:disabled { opacity:.6; cursor:wait; }
+.follow-row { display:flex; gap:.65rem; align-items:center; border-bottom:1px solid var(--line); padding-block:.7rem; }
+.follow-row > div { flex:1; min-width:0; }
+.follow-row small { display:block; }
+.follow-row button { font-size:.75rem; padding:.4rem; }
+.follow-control { display:flex; flex-wrap:wrap; align-items:center; gap:1rem; margin-block:1rem; }
+.feed-layout .vote-card h2 { font-size:1.25rem; line-height:1.5; margin-block:.7rem; }
+@media(max-width:760px){.account-grid,.feed-layout{grid-template-columns:1fr;gap:1.5rem}.account-intro{padding:0}.feed-heading{align-items:start;flex-direction:column}.sign-in,.district-lookup,.followed-members{padding:1rem}.account-intro h1{max-width:none}}
+@media(prefers-reduced-motion:no-preference){.account-grid,.feed-layout{animation:account-enter .18s ease-out}@keyframes account-enter{from{opacity:.7;transform:translateY(4px)}to{opacity:1;transform:none}}}
+
+.lookup-form .button { flex-shrink:0; white-space:nowrap; }

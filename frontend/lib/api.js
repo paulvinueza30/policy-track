@@ -42,3 +42,14 @@ const postAi = (path, body) => request(path, {
 }, 65_000);
 export const getAiSummary = (body) => postAi("/ai/summary", body);
 export const askAboutPolicy = (body) => postAi("/ai/ask", body);
+
+export const accountRequest = (path = "", options = {}) => request("/account" + path, options);
+export const lookupZip = (zip) => request("/districts/zip/" + encodeURIComponent(zip));
+// Browser account requests use the same-origin session bridge. Credentials stay in HttpOnly cookies.
+export async function sessionRequest(action, body, method = body ? "POST" : "GET") {
+  const response = await fetch("/api/session/" + action, { method, cache: "no-store",
+    ...(body ? {headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)} : {}) });
+  const data = await response.json();
+  if (!response.ok) throw new ApiError(response.status, data.error?.message || "Request failed");
+  return data;
+}
