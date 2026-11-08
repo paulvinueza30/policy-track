@@ -65,6 +65,7 @@ def build_index(people: list[dict], start: datetime, end: datetime, now: datetim
             bioguide_id=bioguide,
             lis_id=ids.get("lis"),
             name=name.get("official_full") or f"{name.get('first', '')} {name.get('last', '')}".strip(),
+            nickname=name.get("nickname"),
             party=last.party,
             state=last.state,
             chamber=last.chamber,

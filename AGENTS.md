@@ -163,7 +163,7 @@ These are the shared contract between frontend and backend, so don't rename fiel
 
 ```js
 // Member (senator or representative)
-{ bioguideId, lisId /* senators only */, name, party, state,
+{ bioguideId, lisId /* senators only */, name, nickname /* nullable; needs a member ingest */, party, state,
   chamber /* "senate" | "house": current or most recent */,
   district /* number; 0 = at-large; null for senators */,
   inOfficeFrom, inOfficeTo /* null if current */, photoUrl /* nullable; see §4.6 */,
@@ -205,6 +205,9 @@ Dates in API responses are ISO 8601 strings.
 | `aiSummaries` | `{policyId}__{model}` (`:` and `/` in the model name become `_`) | `AiSummary` |
 | `meta` | e.g. `ingest` | last ingested vote per chamber/congress/session, used for incremental updates |
 | `meta` | `newsFeed` | home page feed: `{ fetchedAt, articles: Article[] }` |
+| `accounts` | verified Google subject | private preferences: `{ state, district, following, reactions }` |
+| `memberNews` | `bioguideId` | news shared across users: `{ fetchedAt, articles: Article[] }` |
+| `sessionRevocations` | SHA-256 of the verified Google subject | `{ validAfter }` in milliseconds; sessions issued at or before it are refused |
 
 Rules:
 - **Only the backend talks to Firestore**, using the Python `firebase-admin` SDK in `backend/app/db/`. Set the security rules to deny all client reads and writes.
@@ -543,6 +546,12 @@ The user approved the RealNews brand and expanded scope to accounts, Google SSO,
 - GET /api/account returns identity and preferences; PUT /api/account/preferences saves {state,district,following,reactions}. Maximum 20 followed members and 200 private policy reactions. No political scores or inferred rankings.
 - GET /api/account/feed?scope=local|national|following&page=&pageSize= returns {items,page,hasMore,needsDistrict?}. Local means federal votes involving the selected delegation, not local-government news. Feed reads use existing runtime four-year date limits and bounded queries; page capped at 20.
 - Firestore accounts/{verifiedGoogleSubject} stores preferences; existing deny-all client rules remain in place. Backend repository owns all reads/writes.
+- **Follows:** PUT and DELETE /api/account/following/{bioguideId} return {following}. They run in Firestore transactions, so quick clicks and other tabs can't overwrite each other; 422 at the 20-member limit. PUT /api/account/preferences leaves follows alone when `following` is omitted, and new frontend code must omit it.
+- **Sessions:** POST /api/account/session takes {credential} (a Google ID token) and returns {token,expiresAt,name}, with expiresAt in Unix seconds. With SESSION_SECRET (backend only, at least 32 characters) the token is a 30-day signed RealNews session. Without it, the token is the same 1-hour Google credential. Identity comes only from a verified Google credential or this server's signature. Sessions can't be renewed without a fresh Google sign-in.
+- **Revoking sessions:** POST /api/account/sign-out and DELETE /api/account end every RealNews session the user has, through a `validAfter` time checked on each signed-in request. If that check can't run, the request gets `503` and is refused. Google tokens, used when SESSION_SECRET is unset, can't be revoked and last up to 1 hour.
+- **Deleting an account:** DELETE /api/account removes that user's accounts document and, in the same write, revokes their sessions. A `sessionRevocations` record stays behind, keyed by a hash so it holds no account identifier.
+- **News about followed lawmakers:** GET /api/account/news returns {items:[{title,source,url,publishedAt,description,memberIds}],pending}, newest first, at most 24, de-duplicated by URL and by normalized headline, keeping the newest copy. Searches look back one year, newest first. All publishers, opinion pieces removed. Each lawmaker's results are cached and shared across users for 12 hours (1 hour when empty); stale results are served on failure, and errors or 429s are never cached. A request fetches at most 5 uncached lawmakers; `pending` is true while others remain and false after a GNews failure.
+- **Matching a lawmaker to an article** uses the headline and description only, never article text. The full name, or their nickname plus last name, must appear with their federal office right before it, a party tag or role noun right after it, or their own chamber plus a political term. A last name alone or a state legislator's title never counts.
 - GET /api/districts/zip/{fiveDigits} uses the HUD USPS type-5 crosswalk, 2025 Q4 for the 119th Congress. Backend-only HUD_API_KEY. Cached 24 hours in bounded process memory. ZIPs can span multiple districts; user confirmation required. No ZIP stored in account preferences.
 - Sign-in and lookup fail visibly when configuration is absent. No prototype Google login, fake district assignment, fabricated news, votes or AI.
 

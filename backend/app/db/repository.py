@@ -2,16 +2,32 @@
 
 Documents are stored with camelCase fields, matching the API (AGENTS.md §5).
 """
+import asyncio
 import hashlib
 import re
 from datetime import datetime
 
+from google.cloud.firestore_v1.async_transaction import async_transactional
 from google.cloud.firestore_v1.base_query import FieldFilter
 from google.cloud import firestore
 
 from app.models import AiSummary, Article, Member, MemberVote, Policy, Vote
 
 BATCH_LIMIT = 500
+
+
+FOLLOW_TRANSACTION_ATTEMPTS = 15  # the default of 5 fails under a burst of clicks
+
+# One lock per bucket keeps memory bounded. It removes contention within this server; the transaction covers others.
+_account_locks = [asyncio.Lock() for _ in range(64)]
+
+
+def _account_lock(user_id: str) -> asyncio.Lock:
+    return _account_locks[int(hashlib.sha1(user_id.encode()).hexdigest(), 16) % len(_account_locks)]
+
+
+class FollowLimitReached(Exception):
+    pass
 
 
 def article_doc_id(url: str) -> str:
@@ -147,10 +163,72 @@ class Repository:
     # Private preferences are always addressed by the verified Google subject.
     async def get_preferences(self, user_id: str) -> dict:
         snap = await self.db.collection("accounts").document(user_id).get()
-        return (snap.to_dict() or {}) if snap.exists else {"state": None, "district": None, "following": []}
+        return {"state": None, "district": None, "following": [], **(snap.to_dict() or {})}
 
     async def save_preferences(self, user_id: str, preferences: dict) -> None:
-        await self.db.collection("accounts").document(user_id).set(preferences)
+        """Without a "following" key the saved follows are left alone, so a stale tab can't undo a follow."""
+        ref = self.db.collection("accounts").document(user_id)
+        await ref.set(preferences, merge=False if "following" in preferences else list(preferences))
+
+    async def add_following(self, user_id: str, member_id: str, limit: int) -> list[str]:
+        """Atomic, so quick clicks and other tabs can't overwrite each other. Raises FollowLimitReached."""
+        ref = self.db.collection("accounts").document(user_id)
+
+        @async_transactional
+        async def run(transaction) -> list[str]:
+            snap = await ref.get(transaction=transaction)
+            following = (snap.to_dict() or {}).get("following", []) if snap.exists else []
+            if member_id in following:
+                return following
+            if len(following) >= limit:
+                raise FollowLimitReached
+            updated = [*following, member_id]
+            transaction.set(ref, {"following": updated}, merge=True)
+            return updated
+
+        async with _account_lock(user_id):
+            return await run(self.db.transaction(max_attempts=FOLLOW_TRANSACTION_ATTEMPTS))
+
+    async def remove_following(self, user_id: str, member_id: str) -> list[str]:
+        ref = self.db.collection("accounts").document(user_id)
+
+        @async_transactional
+        async def run(transaction) -> list[str]:
+            snap = await ref.get(transaction=transaction)
+            following = (snap.to_dict() or {}).get("following", []) if snap.exists else []
+            if member_id not in following:
+                return following
+            updated = [m for m in following if m != member_id]
+            transaction.set(ref, {"following": updated}, merge=True)
+            return updated
+
+        async with _account_lock(user_id):
+            return await run(self.db.transaction(max_attempts=FOLLOW_TRANSACTION_ATTEMPTS))
+
+    def _revocation_ref(self, user_id: str):
+        """Hashed, so no account identifier is left behind after an account is deleted."""
+        return self.db.collection("sessionRevocations").document(hashlib.sha256(user_id.encode()).hexdigest())
+
+    async def sessions_valid_after(self, user_id: str) -> int:
+        snap = await self._revocation_ref(user_id).get()
+        return int((snap.to_dict() or {}).get("validAfter", 0)) if snap.exists else 0
+
+    async def revoke_sessions(self, user_id: str, valid_after_ms: int) -> None:
+        await self._revocation_ref(user_id).set({"validAfter": valid_after_ms})
+
+    async def delete_account(self, user_id: str, valid_after_ms: int) -> None:
+        """One atomic write, so an account is never deleted while its sessions still work."""
+        batch = self.db.batch()
+        batch.set(self._revocation_ref(user_id), {"validAfter": valid_after_ms})
+        batch.delete(self.db.collection("accounts").document(user_id))
+        await batch.commit()
+
+    async def get_member_news(self, member_ids: list[str]) -> dict[str, dict]:
+        refs = [self.db.collection("memberNews").document(m) for m in member_ids]
+        return {snap.id: snap.to_dict() async for snap in self.db.get_all(refs) if snap.exists}
+
+    async def save_member_news(self, member_id: str, data: dict) -> None:
+        await self.db.collection("memberNews").document(member_id).set(data, merge=True)
 
     async def feed_votes(self, member_ids: list[str] | None, start: datetime, end: datetime, count: int) -> list[dict]:
         import asyncio

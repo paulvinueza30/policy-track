@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     google_client_id: str = ""
+    session_secret: str = ""  # signs 30-day sessions; unset means 1-hour Google tokens only
     hud_api_key: str = ""
 
     congress_api_key: str = ""

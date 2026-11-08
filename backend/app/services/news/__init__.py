@@ -7,12 +7,13 @@ import asyncio
 import math
 import re
 import time
+import unicodedata
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
 
 import httpx
 
-from app.models import Article, Policy
+from app.models import Article, Member, Policy
 from app.services.congress import display_number
 
 GNEWS_URL = "https://gnews.io/api/v4/search"
@@ -47,6 +48,18 @@ _NAMED_ACT = re.compile(r"\bAct(?:\s+of\s+\d{4})?$", re.IGNORECASE)
 _OFFICIAL_TITLE = re.compile(r"^(?:to|a bill|an act|providing|making|adopting|expressing|authorizing)\b", re.IGNORECASE)
 
 _NAME_STOPWORDS = frozenset(_w.rstrip("s") for _w in "a an and act at by for from in of on or the to with".split())
+
+# Followed-lawmaker news: headlines and descriptions only, never article bodies.
+MEMBER_NEWS_LOOKBACK = timedelta(days=365)  # many members have no coverage in a given month
+MEMBER_NEWS_STORED = 10
+_OFFICE = {"senate": r"Sen\.|Senator", "house": r"Rep\.|Representative|Congressman|Congresswoman"}
+_LEADERSHIP = r"Speaker|(?:Majority |Minority )?(?:Leader|Whip)"
+_ROLE_NOUN = {"senate": r"senator", "house": r"representative|congressman|congresswoman"}
+_CHAMBER_WORD = {"senate": r"\bsenate\b|\bsenators?\b",
+                 "house": r"\bu\.?s\.? house\b|\bhouse (?:of representatives|republicans?|democrats?|speaker|gop|"
+                          r"committee|floor|majority|minority)\b|\bcongress(?:man|woman)\b"}
+_POLITICAL_WORD = re.compile(r"\b(?:democrats?|democratic|republicans?|gop|bipartisan|legislation|bill|committee|"
+                             r"midterms?|re-?election|congress|congressional)\b", re.IGNORECASE)
 
 _spacing_lock = asyncio.Lock()
 _last_request = 0.0
@@ -199,8 +212,90 @@ def belongs_on_policy_page(article: Article, policy: Policy) -> bool:
     return not is_opinion(article) and is_about_policy(article, policy)
 
 
+def _plain(text: str) -> str:
+    """Accents removed, so "Lujan" in a headline matches "Luján" in the record."""
+    return "".join(c for c in unicodedata.normalize("NFKD", text) if not unicodedata.combining(c))
+
+
+def member_search_name(member: Member) -> str:
+    """The official name as news writes it: "Adam B. Schiff" -> "Adam Schiff", without Jr. or III."""
+    tokens = [t.strip(",") for t in re.sub(r'"[^"]*"', " ", member.name).split()]
+    return " ".join(t for t in tokens if not re.fullmatch(r"[A-Za-z]\.", t)
+                    and t.rstrip(".").lower() not in {"jr", "sr", "ii", "iii", "iv"})
+
+
+def member_names(member: Member) -> list[str]:
+    """Every name to search: the official one, and a nickname from the data or from "Rick" inside the official name."""
+    official = member_search_name(member)
+    quoted = re.search(r'"([^"]+)"', member.name)
+    nickname = member.nickname or (quoted.group(1) if quoted else None)
+    names = [f"{nickname} {official.split()[-1]}", official] if nickname and len(official.split()) > 1 else [official]
+    return list(dict.fromkeys(names))
+
+
+def _name_pattern(member: Member) -> str:
+    patterns = []
+    for name in member_names(member):
+        tokens = [re.escape(t) for t in _plain(name).split()]
+        patterns.append(rf"\b{tokens[0]}(?:\s+[A-Z]\.)?\s+{r'\s+'.join(tokens[1:])}\b" if len(tokens) > 1
+                        else rf"\b{tokens[0]}\b")
+    return f"(?:{'|'.join(patterns)})"
+
+
+def names_member(article: Article, member: Member) -> bool:
+    """Strict on purpose: a thin list beats attaching a same-named person.
+
+    The full name must appear in the headline or description, and with one of: their federal office right before
+    it, a party tag or role noun right after it, or words for their own chamber plus a political term.
+    A last name alone never counts, and neither does a state legislator's title.
+    """
+    text = _plain(f"{article.title}. {article.description or ''}")
+    name = _name_pattern(member)
+    if not re.search(name, text, re.IGNORECASE):
+        return False
+    if re.search(rf"\bstate\s+(?:{_OFFICE['senate']}|{_OFFICE['house']})\s+{name}", text, re.IGNORECASE):
+        return False
+    chambers = {member.chamber, *(role.chamber for role in member.roles)}
+    offices = "|".join([*(_OFFICE[c] for c in chambers), _LEADERSHIP])
+    if re.search(rf"(?:^|[^A-Za-z])(?:{offices})\s+{name}", text, re.IGNORECASE):
+        return True
+    party = member.party[:1].upper()
+    if party and re.search(rf"{name}\s*[,(]\s*{party}\s*[-–]\s*[A-Za-z]", text, re.IGNORECASE):
+        return True
+    nouns = "|".join(_ROLE_NOUN[c] for c in chambers)
+    if re.search(rf"{name},?\s+(?:(?:a|an|the)\s+)?(?:[\w.-]+\s+){{0,3}}(?:{nouns})\b", text, re.IGNORECASE):
+        return True
+    chamber_words = "|".join(_CHAMBER_WORD[c] for c in chambers)
+    return bool(re.search(chamber_words, text, re.IGNORECASE) and _POLITICAL_WORD.search(text))
+
+
+def belongs_with_member(article: Article, member: Member) -> bool:
+    return not is_opinion(article) and names_member(article, member)
+
+
+async def search_member_articles(client: httpx.AsyncClient, api_key: str, member: Member) -> list[Article]:
+    since = datetime.now(timezone.utc) - MEMBER_NEWS_LOOKBACK
+    query = " OR ".join(f'"{name}"' for name in member_names(member))
+    raw = await _request(client, api_key, {"q": query, "sortby": "publishedAt", "max": FEED_MAX_RESULTS,
+                                           "from": _since_param(since)})
+    oldest = datetime.min.replace(tzinfo=timezone.utc)
+    newest_first = sorted(_to_articles(raw, None), key=lambda a: a.published_at or oldest, reverse=True)
+    distinct: dict[str, Article] = {}  # one copy of a wire story, so it can't fill all the stored slots
+    for article in newest_first:
+        if belongs_with_member(article, member):
+            distinct.setdefault(_title_key(article), article)
+    return list(distinct.values())[:MEMBER_NEWS_STORED]
+
+
+def headline_key(title: str, source: str = "") -> str:
+    """Case and punctuation ignored, and a trailing " - Publisher" removed, so a wire story compares equal."""
+    if source:
+        title = re.sub(rf"\s*[-–—|:]\s*{re.escape(source)}\s*$", "", title, flags=re.IGNORECASE)
+    return re.sub(r"\W+", " ", title).strip().lower()
+
+
 def _title_key(article: Article) -> str:
-    return re.sub(r"\W+", " ", article.title).strip().lower()
+    return headline_key(article.title, article.source)
 
 
 async def fetch_feed(client: httpx.AsyncClient, api_key: str) -> list[Article]:

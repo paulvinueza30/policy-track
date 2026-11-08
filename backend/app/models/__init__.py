@@ -27,6 +27,7 @@ class Member(CamelModel):
     bioguide_id: str
     lis_id: str | None = None  # senators only
     name: str
+    nickname: str | None = None  # the name news uses, such as "Bernie"; only set after a member ingest
     party: str
     state: str
     chamber: Chamber  # current or most recent
