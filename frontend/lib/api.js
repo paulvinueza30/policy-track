@@ -35,8 +35,10 @@ export const getMemberVotes = (id, params = {}) => request(`/members/${encodeURI
 export const getVote = (voteId) => request(`/votes/${encodeURIComponent(voteId)}`);
 export const getPolicy = (policyId) => request(`/policies/${encodeURIComponent(policyId)}`);
 export const getPolicyArticles = (policyId) => request(`/policies/${encodeURIComponent(policyId)}/articles`);
-export const getAiSummary = (body) => request("/ai/summary", {
+const postAi = (path, body) => request(path, {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify(body),
 }, 65_000);
+export const getAiSummary = (body) => postAi("/ai/summary", body);
+export const askAboutPolicy = (body) => postAi("/ai/ask", body);

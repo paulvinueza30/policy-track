@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { Lato, Libre_Baskerville } from "next/font/google";
+import Assistant from "@/components/Assistant";
 import "./globals.css";
 
 const bodyFont = Lato({ subsets: ["latin"], weight: ["400", "700", "900"], variable: "--font-body" });
 const headlineFont = Libre_Baskerville({ subsets: ["latin"], weight: ["400", "700"], variable: "--font-headline" });
 
 export const metadata = {
-  title: "VoteLens | U.S. Congress Vote Tracker",
+  title: "RealNew | U.S. Congress Vote Tracker",
   description: "Explore U.S. Congress voting records and policy in plain English.",
 };
 
@@ -17,9 +18,9 @@ export default function RootLayout({ children }) {
         <header className="site-header">
           <div className="frame header-inner">
             <Link className="brand" href="/">
-              <span className="monogram" aria-hidden="true"><b>V</b>L</span>
+              <span className="monogram" aria-hidden="true"><b>R</b>N</span>
               <span>
-                <strong>VoteLens</strong> <span className="tag">Civic</span>
+                <strong>RealNew</strong> <span className="tag">Civic</span>
                 <small>U.S. Congress votes in plain English</small>
               </span>
             </Link>
@@ -31,10 +32,11 @@ export default function RootLayout({ children }) {
         {children}
         <footer className="site-footer" id="about">
           <div className="frame">
-            <strong>VoteLens</strong>
+            <strong>RealNew</strong>
             <p>A Policy Track project for exploring the U.S. Congress.</p>
           </div>
         </footer>
+        <Assistant />
       </body>
     </html>
   );

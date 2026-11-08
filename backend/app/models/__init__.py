@@ -114,3 +114,12 @@ class AiSummary(CamelModel):
     summary: str
     key_points: list[str] = []
     sources: list[str] = []
+
+
+class AiAnswer(CamelModel):
+    policy_id: str
+    model: str
+    generated_at: datetime
+    question: str
+    answer: str
+    sources: list[str] = []

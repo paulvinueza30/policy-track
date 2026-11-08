@@ -1,0 +1,4 @@
+# Ollama's OpenAI-compatible endpoint can't set the context size per request.
+# Create with: ollama create deepseek-r1-8b-8k -f backend/ollama/deepseek-r1-8b-8k.Modelfile
+FROM deepseek-r1:8b
+PARAMETER num_ctx 8192

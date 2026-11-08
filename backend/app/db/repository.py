@@ -3,18 +3,23 @@
 Documents are stored with camelCase fields, matching the API (AGENTS.md §5).
 """
 import hashlib
+import re
 from datetime import datetime
 
 from google.cloud.firestore_v1.base_query import FieldFilter
 from google.cloud import firestore
 
-from app.models import Article, Member, MemberVote, Policy, Vote
+from app.models import AiSummary, Article, Member, MemberVote, Policy, Vote
 
 BATCH_LIMIT = 500
 
 
 def article_doc_id(url: str) -> str:
     return hashlib.sha1(url.encode()).hexdigest()[:20]
+
+
+def ai_summary_doc_id(policy_id: str, model: str) -> str:
+    return re.sub(r"[:/]", "_", f"{policy_id}__{model}")
 
 
 def _dump(model) -> dict:
@@ -78,6 +83,14 @@ class Repository:
             batch.set(col.document(article_doc_id(a.url)), {**_dump(a), "fetchedAt": fetched_at})
         batch.set(policy_ref, {"articlesFetchedAt": fetched_at}, merge=True)
         await batch.commit()
+
+    async def get_ai_summary(self, policy_id: str, model: str) -> dict | None:
+        snap = await self.db.collection("aiSummaries").document(ai_summary_doc_id(policy_id, model)).get()
+        return snap.to_dict() if snap.exists else None
+
+    async def save_ai_summary(self, summary: AiSummary) -> None:
+        await self.db.collection("aiSummaries").document(
+            ai_summary_doc_id(summary.policy_id, summary.model)).set(_dump(summary))
 
     # ---------- writes (ingest) ----------
 
