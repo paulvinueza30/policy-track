@@ -19,7 +19,7 @@ A web app where a user picks a **U.S. state** and sees:
 A regular person who wants to know, without spin, how their senators and representative voted.
 
 ### Definition of done (MVP)
-- [ ] State picker (all 50 states) → state page with **Senate** and **House** views listing its members; House members are listed by district
+- [ ] State picker (all 50 states) → state page with a **Senators / House Reps** toggle; the House view shows a clickable map of the state's congressional districts
 - [ ] Member page → list of their votes (newest first), filterable by date range and by vote position (Yea / Nay / Not Voting / Present), and by chamber if they served in both
 - [ ] Policy/vote detail page → official info (title, date, chamber, result, tally), how the selected state's members voted, related articles, AI summary
 - [ ] A policy voted on by both chambers shows its Senate and House votes on one page
@@ -35,6 +35,7 @@ A regular person who wants to know, without spin, how their senators and represe
 - Voting members only: 100 senators and 435 representatives, including former members who served during the window
 - **Rolling 4-year window**: from today minus 4 years to today. Compute it at runtime. Never hardcode dates. As of Nov 2026 this covers part of the 117th Congress (2nd session, 2022), the 118th (2023–2024) and the 119th (2025–2026).
 - Recorded roll-call votes on bills, resolutions, amendments and nominations (nominations are Senate-only), plus procedural votes
+- A clickable congressional district map for each state (§4.5, §12)
 - News articles linked to a policy
 - AI summaries and Q&A about a single policy, using our self-hosted DeepSeek
 
@@ -43,7 +44,8 @@ A regular person who wants to know, without spin, how their senators and represe
 - Non-voting House delegates and the Resident Commissioner (DC, PR, GU, VI, AS, MP)
 - Elections of the Speaker (20 roll calls in the window). Members vote for a person, not Yea/Nay, so these don't fit the vote model. The ingest skips them
 - Voice votes and other votes with no recorded individual positions
-- Congressional district maps and ZIP-code-to-district lookup (the UI links to house.gov instead; see §12)
+- ZIP-code-to-district lookup (the UI links to house.gov instead; see §12)
+- Maps of past district boundaries (the map shows the current Congress only)
 - User accounts, login, saved favorites, notifications
 - "Scores," grades, rankings, or any language that tells users which way to vote
 - Predicting future votes
@@ -131,6 +133,18 @@ Browser ──> Next.js frontend (React, JS) ──> FastAPI backend (Python) �
 - Env var `NEWS_API_KEY`. The query is the short title, the nominee's name for nominations, or the bill number (e.g. `"S. 316" Congress`) when the title is a long official one.
 - Store only the title, source, URL, published date and short description. **Do not scrape or store full article text.** Link out to the publisher.
 
+### 4.5 Congressional district boundaries (map shapes)
+- Source: U.S. Census Bureau cartographic boundary files, public domain: `https://www2.census.gov/geo/tiger/GENZ2024/shp/cb_2024_us_cd119_500k.zip` (119th Congress). Keep only the 50 states; each district is identified by its state FIPS code and `CD119FP` (`00` = at-large).
+- **These are static files, not an API call.** A one-time script (`frontend/scripts/build-district-maps.mjs`) converts them to per-state SVG path files in `frontend/public/maps/districts/{STATE}.json`. Commit the output. Simplify the shapes so each state's file stays small (aim for under 150 KB).
+- This is the one exception to rule 4: map shapes are bundled with the frontend, because they aren't member or vote data and never change during a Congress.
+- **Regenerate when a new Congress starts** (the 120th begins January 2027, and several states have redrawn their maps). TIGERweb's Legislative service already lists a 120th Congress layer.
+
+### 4.6 Member photos (planned; the frontend uses initials for now)
+- **Yes, photos can come from an API.** The backend saves one URL per member in `photoUrl` during ingest. The frontend never calls a photo service itself.
+- **Primary source:** `https://unitedstates.github.io/images/congress/225x275/{bioguideId}.jpg`. No key needed. Public-domain official portraits. Works from our network. Checked November 2026: 518 of 533 current members and 165 of 174 former members in the window have a photo.
+- **Second source:** Congress.gov `GET /member/{bioguideId}` returns `depiction.imageUrl` and is already wired into the ingest, but Congress.gov doesn't respond from our current network. Use it to fill the gaps once it's reachable.
+- A missing photo is normal (new members usually), so `photoUrl` can be `null`. The UI always falls back to initials.
+
 ### Linking a vote to a policy
 Senate vote XML has a `<document>` block (e.g. `S. 870`, `H.R. 2`, `PN 123`). House vote XML has `<legis-num>` (e.g. `H R 35`, `H RES 5`, `S 870`). Normalize both to our `policyId` format: `{congress}-{billType}-{number}` (e.g. `118-hr-2`). Nomination votes use `{congress}-pn-{number}`.
 
@@ -149,7 +163,7 @@ These are the shared contract between frontend and backend, so don't rename fiel
 { bioguideId, lisId /* senators only */, name, party, state,
   chamber /* "senate" | "house": current or most recent */,
   district /* number; 0 = at-large; null for senators */,
-  inOfficeFrom, inOfficeTo /* null if current */, photoUrl,
+  inOfficeFrom, inOfficeTo /* null if current */, photoUrl /* nullable; see §4.6 */,
   roles: [{ chamber, state, district, party, from, to /* null if current */ }] /* every role in the window */ }
 
 // Vote (one roll call in either chamber)
@@ -253,6 +267,8 @@ The frontend reads the backend URL from `NEXT_PUBLIC_API_URL` and keeps all fetc
     /policy/[policyId]/page.js
   /components                     # React UI components
   /lib/api.js                     # the only place that calls the backend
+  /public/maps/districts/         # generated per-state district shapes ({STATE}.json)
+  /scripts/build-district-maps.mjs  # one-time generator for the district shapes
   package.json
   .env.example
 
@@ -295,7 +311,7 @@ CLAUDE.md
 1. **Stay in scope.** If a request touches §2 "Out of scope," stop and flag it.
 2. **Languages:** JavaScript for `frontend/` (no TypeScript), Python for `backend/`. No other languages.
 3. **No secrets in code or commits.** Read them from env vars (`.env.local` for the frontend, `.env` for the backend; both are gitignored). Add any new var to the matching `.env.example`. Never commit a Firebase service-account JSON file or the DeepSeek server URL/key.
-4. **Only the backend calls external services** (Congress.gov, senate.gov, clerk.house.gov, Voteview, news, Firestore, DeepSeek), and always through the cache. The frontend calls only our FastAPI API, through `frontend/lib/api.js`.
+4. **Only the backend calls external services** at runtime (Congress.gov, senate.gov, clerk.house.gov, Voteview, news, Firestore, DeepSeek), and always through the cache. The frontend calls only our FastAPI API, through `frontend/lib/api.js`.
 5. **Only `NEXT_PUBLIC_API_URL` may be exposed to the browser.** Never put a secret in a `NEXT_PUBLIC_` variable.
 6. **Use the shared data model (§5) and API contract (§7).** If you must change them, update this file and both sides (Pydantic model and frontend usage) in the same change.
 7. **Use `backend/app/date_window.py`** for the 4-year window everywhere. Don't recompute it ad hoc.
@@ -320,7 +336,9 @@ CLAUDE.md
 | News provider | GNews | **Decided** |
 | Senate vote source | senate.gov XML, falling back to Voteview when blocked | **Decided** |
 | House vote source | House Clerk XML, falling back to Voteview | **Decided** |
-| House scope details | Voting members of the 50 states only; skip Speaker elections; no district maps or ZIP lookup | **Proposed**, confirm with team |
+| House scope details | Voting members of the 50 states only; skip Speaker elections; no ZIP lookup | **Proposed**, confirm with team |
+| District map | Clickable per-state map from Census boundary files, current Congress only | **Decided** |
+| Member photos | Initials for now; add `unitedstates/images` through `photoUrl` later | **Decided** |
 | Data model for both chambers | One `members` collection and `Member` model; `s-`/`h-` vote ID prefixes; test data reloaded | **Proposed**, confirm with team |
 | Firebase plan | Blaze required for the full load (about $2) | _TBD_, Firebase owner |
 | Ingest strategy | Pre-ingest with `backend/scripts/ingest.py`; API reads only Firestore (plus GNews for articles) | **Decided** |
@@ -373,28 +391,46 @@ Member labels: `Senator` / `Representative`, `Current senator` / `Former senator
 
 ### 12.2 Pages
 
-**Home (`/`)**: same map and state picker. Rename `SenateMap` to `StateMap`. Heading: `Explore by state`. Sub-text: `Select a state to see its senators and representatives.` Remove the "2 U.S. Senators per state" tag and the map's "2 U.S. Senators" text.
+**Home (`/`)**: same map and state picker. Rename `SenateMap` to `StateMap`. Heading: `Explore by state`. Sub-text: `Select a state to see its senators and representatives.` Remove the "2 U.S. Senators per state" tag and the map's "2 U.S. Senators" text. The toggle isn't shown here. Clicking a state opens the state page.
 
-**State page (`/state/[stateCode]?chamber=senate|house&member=<bioguideId>`)**
+**State page (`/state/[stateCode]?chamber=senate|house&district=<number>&member=<bioguideId>`)**
+
+After a state is clicked, the page opens with a **`Senators` / `House Reps`** toggle above the map. The default is `Senators`.
 
 ```
 Washington
-[ Map ]            [ State picker ]
-                   [ Senate (2) ] [ House (10) ]      <- tabs, default Senate
-                   Find your district on house.gov ↗  <- House tab only
-                   [ Search by name or district ]     <- House tab only
-                   WA-1 · Suzan DelBene · Democrat
-                   WA-2 · Rick Larsen · Democrat ...
-                   Selected member + "Open member profile →"
+             [ Senators ] [ House Reps ]    <- toggle
+
+Senators view                    House Reps view
+[ U.S. map, state highlighted ]  [ Zoomed map of the state's districts ]
+[ State picker ]                 [ State picker ] [ District dropdown ]
+Maria Cantwell ...               Find your district on house.gov ↗
+Patty Murray ...                 WA-7 · 7th District
+                                 Pramila Jayapal · Democrat · Current
+                                 Former members of this district, if any
+Selected member + "Open member profile →"
 Voting Record: <member>   (3 most recent votes)
 ```
 
-- The tabs are links that update `?chamber=`, so views can be shared and the back button works. Use `aria-current` on the active tab.
-- House list: sorted by district, current member first, then former members of that district. It must scroll inside its panel for large states (California has 52 districts).
-- Search filters the House list on the client, matching name, district number or `WA-7`. Skip it for states with one district.
+Toggle:
+- Use links that update `?chamber=` so views can be shared and the back button works, with `aria-current` on the active option. Keep the state when switching.
+- Switching to `House Reps` replaces the national map with that state's district map. Switching back restores the national map.
+
+District map (`DistrictMap` component):
+- Load `/maps/districts/{STATE}.json` only when the House view opens, and show a loading state in the map area. The file shape is `{ "viewBox": "...", "districts": [{ "district": 7, "path": "M..." }] }`.
+- Every district is clickable and sets `?district=`. Reuse the national map's hover and focus tooltip, showing `WA-7 · Pramila Jayapal`. Highlight the selected district the same way the selected state is highlighted.
+- Selecting a district updates the panel and the `Voting Record` below it to that district's representative. With no district selected, prompt: `Select a district on the map.`
+- Don't color districts by party or by any vote result. The map only shows location and selection.
+- Each district must be a keyboard-focusable link with `aria-label="Washington 7th Congressional District"`.
+- **Always include the district dropdown.** Dense city districts (New York, Los Angeles, Chicago) are too small to tap on a phone. The dropdown also serves screen-reader users.
+- At-large states (AK, DE, ND, SD, VT, WY) have one shape. Select it automatically and label it `At-large`.
+- Note under the map: `District lines shown for the current Congress. Former members may have represented a different area.`
 - Link `Find your district on house.gov` to `https://www.house.gov/representatives/find-your-representative` and open it in a new tab. Many people don't know their district number.
-- When the selected `member` isn't in the active tab, select the first member of that tab.
-- A person who served in both chambers appears in each tab with the matching role (use `roles`).
+
+Members list:
+- Find the district's members by filtering the `getStateMembers(code, "house")` response on `district`. Show the current representative first, then former members.
+- If the selected `member` isn't in the active view, fall back to the first senator or the selected district's current representative.
+- A person who served in both chambers appears in each view with the matching role (use `roles`).
 
 **Member page (`/member/[bioguideId]`)** replaces `/senator/[bioguideId]`. Make `/senator/[id]` redirect here.
 
@@ -422,8 +458,10 @@ Voting Record: <member>   (3 most recent votes)
 | Now | Change |
 |---|---|
 | `SenateMap` | Rename `StateMap`; remove Senate-specific text |
-| `Portrait({ senator })` | `Portrait({ member })` |
-| `DelegationExplorer` | Add chamber tabs and the House list; props become `members`, `chamber` |
+| New `DistrictMap` | Per-state clickable district map (see §12.2); shares `StateMap`'s tooltip and selected styles |
+| New `ChamberToggle` | The `Senators` / `House Reps` toggle |
+| `Portrait({ senator })` | `Portrait({ member })`. Keep initials for now (§12.7) |
+| `DelegationExplorer` | Use `ChamberToggle`; swap the map by chamber; props become `members`, `chamber`, `district` |
 | `RollCall` | Use `memberVotes`; add filters and grouping for long lists |
 | `VoteCard` and the All votes row | Show a `Senate`/`House` chip where the chamber isn't obvious from the page |
 | `lib/api.js` | `getStateMembers(code, chamber)`, `getMember(id)`, `getMemberVotes(id, params)`; remove the senator functions after migration |
@@ -459,8 +497,19 @@ Add these to `VOTE_TYPES` in `lib/display.js`. **Order matters: test the specifi
 ### 12.6 Frontend done when
 
 - [ ] Every Senate-only label is gone from shared pages
-- [ ] Each state shows Senate and House tabs, and `/state/CA?chamber=house` lists all 52 districts
+- [ ] Every state has a working `Senators` / `House Reps` toggle
+- [ ] `/state/CA?chamber=house` shows a clickable map of all 52 districts, and clicking one shows its representative
+- [ ] The district dropdown and the map stay in sync, and both work by keyboard and on a phone
 - [ ] A member page works for a senator, a representative and someone who served in both
 - [ ] `/senator/[id]` redirects to `/member/[id]`
 - [ ] A House vote page is usable with 435 members on desktop and phone
 - [ ] A bill voted on in both chambers shows both on its policy page
+
+### 12.7 Member photos: keep the initials for now
+
+**Don't add photos yet.** Keep the initials in `Portrait`, and build it so photos can be added later with a small change:
+
+- Pass the whole `member` to `Portrait`, and keep the image area the same size and shape as the current initials circle so the layout won't move.
+- When the photo work starts, the backend will fill `member.photoUrl` (§4.6). `Portrait` then shows the image when `photoUrl` exists and falls back to initials when it's `null` or the image fails to load.
+- Use `alt=""` when the name is already shown beside the photo, and add the photo host to `images.remotePatterns` in `next.config.mjs` if using `next/image`.
+- Never build a photo URL or call a photo service in the frontend. Only use `photoUrl` from our API.
