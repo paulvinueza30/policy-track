@@ -538,3 +538,302 @@ The user approved the RealNews brand and expanded scope to accounts, Google SSO,
 - Firestore accounts/{verifiedGoogleSubject} stores preferences; existing deny-all client rules remain in place. Backend repository owns all reads/writes.
 - GET /api/districts/zip/{fiveDigits} uses the HUD USPS type-5 crosswalk, 2025 Q4 for the 119th Congress. Backend-only HUD_API_KEY. Cached 24 hours in bounded process memory. ZIPs can span multiple districts; user confirmation required. No ZIP stored in account preferences.
 - Sign-in and lookup fail visibly when configuration is absent. No prototype Google login, fake district assignment, fabricated news, votes or AI.
+
+____UPDATE_____
+
+# Stitch Frontend and Backend Integration — VoteLens
+
+## 1. Updated Project Scope
+
+The project now includes the following approved features:
+
+- User accounts and profiles
+- Google Single Sign-On (SSO)
+- Personalized political feeds
+- ZIP-code-based congressional district lookup
+- Account-specific preferences and personalized content
+- Smooth navigation and transitions between all new and existing pages
+
+These requirements supersede earlier exclusions of accounts, login, and ZIP-code lookup in this file. Update the original scope and MVP sections accordingly.
+
+All other existing architectural requirements remain in effect unless explicitly changed by the team.
+
+## 2. Core Implementation Rules
+
+Google Stitch is the visual design reference, not the source of truth for backend functionality.
+
+Before implementing a Stitch design:
+
+1. Inspect the existing frontend, backend, database models, API routes, and authentication setup.
+2. Identify reusable components and existing functionality.
+3. Compare the Stitch design with the current application.
+4. Create an implementation plan identifying required frontend and backend changes.
+5. Reuse existing APIs and data models wherever possible.
+6. Implement missing backend functionality before treating a frontend feature as complete.
+7. Verify all new features against the running application.
+
+Do not replace the existing application architecture or rewrite working components unnecessarily.
+
+Preserve Next.js App Router, React, JavaScript, FastAPI, and Firestore.
+
+Do not introduce a separate backend, mock production API, or duplicate database without explicit approval.
+
+## 3. Frontend Scaffolding
+
+Translate Stitch designs into reusable React components within the existing Next.js application.
+
+Requirements:
+
+- Maintain visual consistency across existing and new pages.
+- Reuse the project's navigation, layouts, typography, and styling conventions.
+- Use shared components for navigation, buttons, cards, forms, loading indicators, and error states.
+- Preserve existing congressional maps, voting information, policy details, and search functionality.
+- Ensure responsive behavior across mobile, tablet, and desktop.
+- Support keyboard navigation, visible focus indicators, and accessible forms.
+- Avoid unnecessary full-page reloads.
+- Preserve relevant application state during navigation.
+- Use skeleton loading states for asynchronous content.
+- Provide clear empty, loading, success, and error states.
+
+Animations and transitions should be subtle, smooth, and consistent. Respect reduced-motion accessibility preferences.
+
+Do not add animation libraries unless existing tools are insufficient.
+
+## 4. Google SSO and User Accounts
+
+Implement Google authentication using an established, supported authentication provider compatible with the existing architecture.
+
+First inspect the repository for an existing authentication implementation. If none exists, propose Firebase Authentication with Google Sign-In for team approval, given the project's existing Firebase infrastructure.
+
+Requirements:
+
+- Support Google sign-in and sign-out.
+- Maintain authenticated sessions across navigation and refreshes.
+- Handle authentication loading, cancellation, failure, and expiration.
+- Protect account-specific backend endpoints.
+- Validate authentication tokens on the FastAPI backend.
+- Never trust user IDs supplied by the frontend as proof of identity.
+- Never expose service-account credentials or secrets to the browser.
+- Use secure token transport and storage practices.
+- Restrict user data access to the authenticated account.
+- Do not allow users to access or modify another user's profile or feed.
+
+The backend must verify identity before reading or writing protected user information.
+
+Create or reuse a Firestore user profile associated with the authenticated user's stable UID.
+
+Suggested profile fields:
+
+- uid
+- displayName
+- email
+- photoURL
+- zipCode
+- stateCode
+- congressionalDistrict
+- preferences
+- createdAt
+- updatedAt
+
+Treat these fields as a proposed schema, not an existing one. Confirm the schema and privacy requirements before implementation.
+
+Do not automatically overwrite existing profile preferences when a returning user signs in.
+
+## 5. Personalized Feed Integration
+
+The personalized feed must retrieve real application data through the FastAPI backend.
+
+Do not use permanent hardcoded sample content, fabricated voting records, or mock politicians in production.
+
+Feed requirements:
+
+- Retrieve content relevant to the user's selected state and congressional district.
+- Include relevant congressional representatives and senators.
+- Display recent congressional votes, policy updates, and related news when available.
+- Reuse existing congressional and policy APIs.
+- Use stable identifiers to connect feed items to existing member, vote, and policy detail pages.
+- Sort feed items using a documented, deterministic strategy.
+- Support pagination or incremental loading.
+- Prevent duplicate feed items.
+- Handle missing data and failed requests gracefully.
+- Provide an informative empty state for new accounts.
+- Refresh feed data when relevant account preferences change.
+
+The feed must remain politically neutral. Do not infer political affiliation or recommend content based on assumed ideology.
+
+Do not generate fictional political activity to fill empty feeds.
+
+### Backend responsibilities
+
+Inspect existing API routes before adding new endpoints.
+
+If needed, propose:
+
+- GET /api/me
+- PATCH /api/me
+- GET /api/me/feed
+- GET /api/me/preferences
+- PATCH /api/me/preferences
+
+These are proposed endpoints, not guaranteed existing routes.
+
+Follow the existing API conventions, including JSON response structure, camelCase fields, error handling, and pagination patterns.
+
+Avoid duplicating data already available through existing APIs.
+
+## 6. ZIP Code and Congressional District Lookup
+
+Implement ZIP-code-based congressional district identification through a reliable, authoritative data source or validated geographic mapping.
+
+Requirements:
+
+- Accept and validate five-digit U.S. ZIP codes.
+- Reject malformed input with a clear error message.
+- Identify the corresponding state.
+- Resolve the congressional district when sufficient geographic information exists.
+- Account for ZIP codes that overlap multiple congressional districts.
+- Never assume that one ZIP code always maps to exactly one district.
+- Request a complete address or allow district selection when ZIP information is insufficient.
+- Use current congressional district boundaries.
+- Identify at-large congressional districts correctly.
+- Cache geographic lookup results where appropriate.
+- Handle unavailable lookup services gracefully.
+
+District lookup must be implemented or validated on the backend, not solely through frontend logic.
+
+The user should be able to confirm or correct their district before it is saved to their profile.
+
+Once confirmed, the district should connect to the user's personalized feed and representative information.
+
+## 7. Frontend and Backend Communication
+
+All application data requests must follow the existing architecture:
+
+Next.js frontend → FastAPI backend → Firestore/external data services.
+
+Authentication may use the approved authentication provider's client SDK, but protected application data must remain governed by backend authorization.
+
+Requirements:
+
+- Centralize API request utilities.
+- Reuse the existing API base URL configuration.
+- Follow existing request and response conventions.
+- Validate backend responses.
+- Handle 401, 403, 404, 429, and 500-level responses appropriately.
+- Prevent duplicate requests during navigation.
+- Handle network timeouts and disconnected states.
+- Avoid exposing backend secrets.
+- Do not silently swallow API errors.
+- Do not introduce breaking changes to existing endpoints.
+
+Document any new API contracts and required environment variables.
+
+## 8. Navigation and Transitions
+
+Ensure smooth navigation between:
+
+- Home page
+- State and district pages
+- Congressional member profiles
+- Policy and voting details
+- Google sign-in
+- User profile
+- Personalized feed
+- ZIP-code/district setup
+
+Requirements:
+
+- Preserve existing navigation patterns.
+- Use client-side navigation where appropriate.
+- Maintain consistent page layouts.
+- Avoid layout shifts and visual flashing.
+- Show appropriate loading indicators.
+- Redirect unauthenticated users only when authentication is required.
+- Preserve intended destinations during sign-in.
+- Restore appropriate state after successful authentication.
+- Support browser back and forward navigation.
+- Avoid redirect loops.
+- Respect reduced-motion settings.
+
+A user should be able to move from a personalized feed item to the corresponding policy or representative page without losing their place unnecessarily.
+
+## 9. Data Security and Privacy
+
+Treat account data, location information, and personal preferences as sensitive user information.
+
+Requirements:
+
+- Apply least-privilege access controls.
+- Validate authorization on every protected backend operation.
+- Update Firestore security rules where needed.
+- Do not store unnecessary personal information.
+- Do not log authentication tokens or sensitive profile data.
+- Keep private configuration out of version control.
+- Avoid exposing another user's account information.
+- Obtain appropriate consent before storing location-related profile information.
+
+Do not expose user profiles or personalized feed data through public endpoints.
+
+## 10. Testing and Definition of Done
+
+A feature is not complete simply because the Stitch interface renders correctly.
+
+Verify the complete flow:
+
+1. A new user can sign in with Google.
+2. The backend verifies the user's identity.
+3. A profile is created or retrieved correctly.
+4. The user can enter a ZIP code.
+5. The district lookup returns accurate information or requests clarification.
+6. The user can confirm their district.
+7. The profile persists correctly.
+8. The personalized feed retrieves relevant real backend data.
+9. Feed items navigate to valid existing pages.
+10. Returning users retain their account information and preferences.
+11. Sign-out works correctly.
+12. Protected endpoints reject unauthorized requests.
+13. Loading, empty, and error states work.
+14. Existing VoteLens functionality continues working.
+
+Add focused tests for authentication, profile access, ZIP/district ambiguity, feed data contracts, and navigation.
+
+Run available lint, build, and test commands. Report which checks passed, failed, or could not be run.
+
+Do not claim a feature works end-to-end without verifying its actual backend integration.
+
+## 11. Codex Workflow and Team Collaboration
+
+Before making changes:
+
+1. Confirm the active branch and working-tree status.
+2. Inspect the latest relevant project files.
+3. Read the existing AGENTS.md instructions.
+4. Identify conflicts between older specifications and newly approved requirements.
+5. Produce a brief implementation plan.
+6. Explain any required new dependencies, environment variables, API endpoints, or database changes.
+
+During implementation:
+
+- Make small, focused changes.
+- Preserve existing functionality.
+- Avoid unrelated refactoring.
+- Keep frontend and backend changes coordinated.
+- Do not overwrite teammates' changes.
+- Do not push directly to main or test without explicit approval.
+- Use a feature branch for new implementation work.
+
+After implementation:
+
+- Summarize the files changed.
+- Document API and database changes.
+- Explain how to test the feature locally.
+- Identify remaining integration gaps.
+- Clearly distinguish completed functionality from scaffolding or placeholders.
+
+## 12. Final Integration Principle
+
+A feature is complete only when its interface, backend behavior, data persistence, security, navigation, and error handling work together.
+
+Prioritize correct end-to-end behavior over visual completeness.
+
+When Stitch designs conflict with existing backend capabilities, identify the mismatch and propose a compatible implementation rather than inventing functionality or silently replacing working code.
