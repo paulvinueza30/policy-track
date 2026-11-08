@@ -46,7 +46,7 @@ const postAi = (path, body) => request(path, {
 export const getAiSummary = (body) => postAi("/ai/summary", body);
 export const askAboutPolicy = (body) => postAi("/ai/ask", body);
 
-export const accountRequest = (path = "", options = {}) => request("/account" + path, options);
+export const accountRequest = (path = "", options = {}, timeout) => request("/account" + path, options, timeout);
 export const lookupZip = (zip) => request("/districts/zip/" + encodeURIComponent(zip));
 // Browser account requests use the same-origin session bridge. Credentials stay in HttpOnly cookies.
 export async function sessionRequest(action, body, method = body ? "POST" : "GET") {

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { districtLabel, ordinal, stateHref } from "@/lib/display";
+import ZipDistrictSearch from "./ZipDistrictSearch";
 
 export default function DistrictMap({ state, district, members = [] }) {
   const router = useRouter();
@@ -45,6 +46,7 @@ export default function DistrictMap({ state, district, members = [] }) {
         {numbers.map(number => <option key={number} value={number}>{districtLabel({state:state.code,district:number})}</option>)}
       </select>
     </label>
+    <ZipDistrictSearch />
     <p className="map-note">District lines shown for the current Congress (119th). Former members may have represented a different area.</p>
     <a className="district-help" href="https://www.house.gov/representatives/find-your-representative" target="_blank" rel="noreferrer">Find your district on house.gov ↗</a>
   </div>;

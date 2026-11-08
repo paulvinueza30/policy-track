@@ -4,6 +4,7 @@ import DistrictMap from "./DistrictMap";
 import ChamberToggle from "./ChamberToggle";
 import Portrait from "./Portrait";
 import MemberVotes from "./MemberVotes";
+import FollowMember from "./FollowMember";
 export { default as Portrait } from "./Portrait";
 import StatePicker from "./StatePicker";
 import states from "@/lib/states.json";
@@ -32,7 +33,7 @@ export function DelegationExplorer({ state, members, active, error, chamber = "s
         {!!visible?.length && <ul className="senator-list member-list">{visible.map(member=><li key={member.bioguideId}>
           <Link className={"senator-link member-card party-" + partyTone(member.party)} href={stateHref(stateCode, chamber, district, member.bioguideId) + "#delegation"} aria-current={active?.bioguideId === member.bioguideId ? "true" : undefined}>
             <Portrait member={member} /><span><strong>{member.name}</strong><small>{member.party} · {member.inOfficeTo ? "Former" : "Current"} {memberTitle(member).toLowerCase()}</small>{chamber === "house" && <small>{districtLabel(member)}</small>}</span><span className="arrow" aria-hidden="true">{active?.bioguideId === member.bioguideId ? "✓" : "→"}</span>
-          </Link></li>)}</ul>}
+          </Link>{!member.inOfficeTo && <FollowMember id={member.bioguideId} name={member.name} compact />}</li>)}</ul>}
         {active && <div className={"active-senator party-" + partyTone(active.party)}><p className="eyebrow">Selected {memberTitle(active).toLowerCase()}</p><h3>{active.name}</h3><p>{districtLabel(active)} · {active.party}</p><Link className="button" href={memberHref(active)}>Open member profile →</Link></div>}
       </div>
     </div>

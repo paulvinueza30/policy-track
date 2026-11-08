@@ -236,3 +236,52 @@ button:disabled { opacity:.6; cursor:wait; }
 @media(prefers-reduced-motion:no-preference){.account-grid,.feed-layout{animation:account-enter .18s ease-out}@keyframes account-enter{from{opacity:.7;transform:translateY(4px)}to{opacity:1;transform:none}}}
 
 .lookup-form .button { flex-shrink:0; white-space:nowrap; }
+
+/* Personal homepage and follow controls */
+.personal-home { display: grid; gap: 1rem; padding: clamp(1rem, 2.5vw, 1.45rem); }
+.personal-home h3 { margin: 0 0 .4rem; }
+.personal-home h2:focus { outline: none; }
+.personal-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+.lawmaker-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem 1.5rem; }
+.lawmaker-list { list-style: none; margin: 0; padding: 0; }
+.personal-news { display: grid; gap: .6rem; padding-top: 1rem; border-top: 1px solid var(--light-line); }
+.news-about { justify-self: start; }
+.news-card .news-about + .eyebrow { margin-top: .5rem; }
+.member-list li { display: grid; gap: .3rem; }
+.follow-control.compact { justify-content: flex-end; min-height: 1.75rem; margin: 0; gap: .4rem; font-size: .82rem; }
+.follow-control:empty { margin: 0; }
+.follow-control p { margin: 0; font-size: .82rem; }
+.follow-button { padding: .25rem .6rem; border: 1px solid var(--accent); border-radius: .4rem; background: var(--card); color: var(--teal); font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer; }
+.follow-button[aria-pressed="true"] { background: var(--teal-soft); }
+.delete-account { display: grid; gap: .75rem; padding: 1.5rem; }
+.delete-account p { margin: 0 0 .75rem; font-size: .9rem; }
+.danger-button { justify-self: start; padding: .55rem .8rem; border: 1px solid #b91c1c; border-radius: .45rem; background: var(--card); color: #b91c1c; font: inherit; font-size: .84rem; font-weight: 700; cursor: pointer; }
+.danger-button:hover { background: #fef2f2; }
+@media (max-width: 760px) { .lawmaker-groups { grid-template-columns: 1fr; } }
+
+/* ZIP search on the House view */
+.zip-search { display: grid; gap: .5rem; padding-top: .75rem; border-top: 1px solid var(--light-line); }
+.zip-search p { margin: 0; }
+.zip-search .lookup-form label { font-size: .9rem; font-weight: 700; }
+.zip-search input[inputmode] { flex: 1; min-width: 0; padding: .5rem .6rem; border: 1px solid var(--line); border-radius: .45rem; font: inherit; font-size: 1rem; }
+.zip-search [role="alert"] { font-size: .88rem; }
+.zip-choices { display: grid; gap: .6rem; }
+.zip-choices .button { justify-self: start; }
+.zip-choices .button:disabled { opacity: .5; cursor: not-allowed; }
+.zip-choices fieldset { display: grid; gap: .35rem; margin: 0; padding: 0; border: 0; }
+.zip-choices legend { padding: 0; margin-bottom: .25rem; font-size: .9rem; font-weight: 700; }
+.zip-choices label { display: flex; align-items: center; gap: .45rem; }
+.zip-choices input[type="radio"] { flex: none; width: auto; margin: 0; }
+
+/* District lookup and account view */
+.zip-fieldset { display: grid; gap: .35rem; margin: 0; padding: 0; border: 0; }
+.zip-fieldset legend { padding: 0; margin-bottom: .25rem; font-weight: 700; }
+.zip-fieldset label { display: flex; align-items: center; gap: .45rem; }
+.zip-fieldset input[type="radio"] { flex: none; width: auto; margin: 0; }
+.district-lookup [role="alert"], .account-panel [role="alert"], .follow-delegation [role="alert"] { font-size: .9rem; }
+.district-lookup .button { justify-self: start; }
+.district-saved { font-weight: 700; color: var(--teal); }
+.follow-delegation { display: grid; gap: .5rem; padding-top: .75rem; border-top: 1px solid var(--light-line); }
+.follow-delegation p { margin: 0; font-size: .9rem; }
+.follow-delegation .button { justify-self: start; height: auto; text-align: left; }
+.account-panel .follow-button { padding: .55rem .8rem; }
