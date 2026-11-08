@@ -44,7 +44,7 @@ export default async function SenatorPage({ params, searchParams }) {
   return (
     <main className="frame page">
       <nav className="breadcrumbs" aria-label="Breadcrumb">
-        <Link href="/">United States Senate</Link>
+        <Link href="/">U.S. Congress</Link>
         {state && <><span aria-hidden="true">›</span><Link href={`/state/${state.code}?senator=${encodeURIComponent(senator.bioguideId)}#delegation`}>{state.name} Delegation</Link></>}
       </nav>
       <section className="panel profile">

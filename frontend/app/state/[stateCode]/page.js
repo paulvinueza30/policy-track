@@ -28,7 +28,7 @@ export default async function StatePage({ params, searchParams }) {
 
   return (
     <main className="frame page">
-      <nav className="breadcrumbs" aria-label="Breadcrumb"><Link href="/">United States Senate</Link></nav>
+      <nav className="breadcrumbs" aria-label="Breadcrumb"><Link href="/">U.S. Congress</Link></nav>
       <div className="intro compact">
         <p className="eyebrow">State delegation</p>
         <h1>{state.name}</h1>

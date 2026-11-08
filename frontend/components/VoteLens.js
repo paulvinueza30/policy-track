@@ -107,7 +107,7 @@ export async function RollCall({ vote, state, positionsUnavailable }) {
         </dl>
       </section>
       <section className="policy-section">
-        <h2>{state ? `How ${state.name} Senators Voted` : "How Senators Voted"}</h2>
+        <h2>{state ? `How ${state.name} Members Voted` : "How Members Voted"}</h2>
         {positionsUnavailable ? <p>Individual positions are unavailable right now.</p>
           : positions?.length ? (
             <ul className="roll-calls policy-votes">

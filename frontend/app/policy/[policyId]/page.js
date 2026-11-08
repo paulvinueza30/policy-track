@@ -49,7 +49,7 @@ export default async function PolicyPage({ params, searchParams }) {
   return (
     <main className="frame page">
       <nav className="breadcrumbs" aria-label="Breadcrumb">
-        <Link href="/">United States Senate</Link>
+        <Link href="/">U.S. Congress</Link>
         {state && <><span aria-hidden="true">›</span><Link href={"/state/" + code}>{state.name} Delegation</Link></>}
       </nav>
       <article className="panel policy stack">

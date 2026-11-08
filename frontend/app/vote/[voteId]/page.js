@@ -18,11 +18,11 @@ export default async function VotePage({ params, searchParams }) {
   return (
     <main className="frame page">
       <nav className="breadcrumbs" aria-label="Breadcrumb">
-        <Link href="/">United States Senate</Link>
+        <Link href="/">U.S. Congress</Link>
         {state && <><span aria-hidden="true">›</span><Link href={"/state/" + state.code}>{state.name} Delegation</Link></>}
       </nav>
       <article className="panel policy stack">
-        <header><p className="eyebrow">Senate roll call</p><h1>{vote.title || vote.question}</h1><p className="vote-subtitle">{voteSubtitle(vote)}</p></header>
+        <header><p className="eyebrow">{vote.chamber === "house" ? "House" : "Senate"} roll call</p><h1>{vote.title || vote.question}</h1><p className="vote-subtitle">{voteSubtitle(vote)}</p></header>
         <RollCall vote={vote} state={state} />
         {vote.policyId && <Link href={voteHref(vote, state?.code)}>View related policy →</Link>}
       </article>
