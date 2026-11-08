@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
-export default function SenateMap({ states, stateCode }) {
+export default function StateMap({ states, stateCode }) {
   const [hovered, setHovered] = useState(null);
   const [focused, setFocused] = useState(null);
   const tooltip = hovered ?? focused;
@@ -41,7 +41,7 @@ export default function SenateMap({ states, stateCode }) {
         {tooltip && (
           <div className="map-tooltip" aria-hidden="true" style={{ left: tooltip.x, top: tooltip.y }}>
             <strong>{tooltip.name}</strong>
-            <span>2 U.S. Senators</span>
+            <span>Explore members of Congress</span>
           </div>
         )}
       </div>

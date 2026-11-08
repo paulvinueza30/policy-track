@@ -2,13 +2,13 @@
 
 import { useRouter } from "next/navigation";
 
-export default function StatePicker({ options, stateCode }) {
+export default function StatePicker({ options, stateCode, chamber = "senate" }) {
   const router = useRouter();
 
   function openState(event) {
     event.preventDefault();
     const state = new FormData(event.currentTarget).get("state");
-    if (options.some(({ code }) => code === state)) router.push("/state/" + state);
+    if (options.some(({ code }) => code === state)) router.push("/state/" + state + "?chamber=" + chamber);
   }
 
   return (
