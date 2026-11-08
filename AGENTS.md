@@ -1,4 +1,4 @@
-# Agent Guide: VoteLens, a U.S. Congress Vote Tracker
+# Agent Guide: RealNew, a U.S. Congress Vote Tracker
 
 Read this first. It is the source of truth for project scope. If a task isn't covered here or goes against it, stop and ask a human teammate instead of guessing. When the team changes a decision, update this file in the same change.
 
@@ -388,13 +388,13 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 ## 12. Frontend UI spec: Senate + House
 
-**Audience: the frontend developer.** Keep the existing VoteLens visual design (panels, typography, badges, the map, `VoteCard`, the two-line vote labels). This is a change to content and navigation, not a redesign. Work in `frontend/` only and use the routes in §7.
+**Audience: the frontend developer.** Keep the existing RealNew visual design (panels, typography, badges, the map, `VoteCard`, the two-line vote labels). This is a change to content and navigation, not a redesign. Work in `frontend/` only and use the routes in §7.
 
 ### 12.1 Site-wide copy
 
 | Where | New text |
 |---|---|
-| Browser title (`layout.js`) | `VoteLens \| U.S. Congress Vote Tracker` |
+| Browser title (`layout.js`) | `RealNew \| U.S. Congress Vote Tracker` |
 | Header tagline | `U.S. Congress votes in plain English` |
 | Home heading | `Understand how your members of Congress vote on what matters to you.` |
 | Home intro | `Explore your state's senators and representatives, browse roll-call votes, and see policy explained in plain English.` |

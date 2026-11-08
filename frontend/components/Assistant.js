@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { ApiError, askAboutPolicy, getVote } from "@/lib/api";
 import "./Assistant.css";
 
-const NAME = "VoteLens Assistant";
+const NAME = "RealNew Assistant";
 const HINT_KEY = "votelens-assistant-hint-seen";
 
 /** What the user is looking at, from the URL. Read from window so the layout can stay static. */

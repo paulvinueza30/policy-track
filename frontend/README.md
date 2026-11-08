@@ -1,4 +1,4 @@
-# VoteLens frontend
+# RealNew frontend
 
 The Next.js app reads congressional data from Policy Track’s FastAPI backend. Set `NEXT_PUBLIC_API_URL` in `.env.local` to the backend origin, without the `/api` suffix. Keep Firebase, news, and DeepSeek credentials in the backend environment.
 
