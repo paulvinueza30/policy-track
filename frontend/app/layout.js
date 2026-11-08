@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Lato, Libre_Baskerville } from "next/font/google";
-import Assistant from "@/components/Assistant";
 import "./globals.css";
 
 const bodyFont = Lato({ subsets: ["latin"], weight: ["400", "700", "900"], variable: "--font-body" });
@@ -36,7 +35,6 @@ export default function RootLayout({ children }) {
             <p>A Policy Track project for exploring the U.S. Congress.</p>
           </div>
         </footer>
-        <Assistant />
       </body>
     </html>
   );

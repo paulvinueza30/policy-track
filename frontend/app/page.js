@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import LatestNews, { LatestNewsLoading } from "@/components/LatestNews";
 import { DelegationExplorer } from "@/components/VoteLens";
 
 export default function HomePage() {
@@ -9,6 +11,10 @@ export default function HomePage() {
         <p>Explore your state’s senators and representatives, browse roll-call votes, and see policy explained in plain English.</p>
       </section>
       <DelegationExplorer />
+      {/* Streams in separately so the map and state picker never wait on the news. */}
+      <Suspense fallback={<LatestNewsLoading />}>
+        <LatestNews />
+      </Suspense>
     </main>
   );
 }
