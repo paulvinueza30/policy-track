@@ -29,10 +29,9 @@ async function request(path, options = {}, timeout = 10_000) {
   return body;
 }
 
-export const getStateSenators = (stateCode) => request(`/states/${encodeURIComponent(stateCode)}/senators`);
-export const getSenator = (bioguideId) => request(`/senators/${encodeURIComponent(bioguideId)}`);
-export const getSenatorVotes = (bioguideId, params = {}) =>
-  request(`/senators/${encodeURIComponent(bioguideId)}/votes?${new URLSearchParams(params)}`);
+export const getStateMembers = (stateCode, chamber) => request(`/states/${encodeURIComponent(stateCode)}/members?${new URLSearchParams(chamber ? { chamber } : {})}`);
+export const getMember = (id) => request(`/members/${encodeURIComponent(id)}`);
+export const getMemberVotes = (id, params = {}) => request(`/members/${encodeURIComponent(id)}/votes?${new URLSearchParams(params)}`);
 export const getVote = (voteId) => request(`/votes/${encodeURIComponent(voteId)}`);
 export const getPolicy = (policyId) => request(`/policies/${encodeURIComponent(policyId)}`);
 export const getPolicyArticles = (policyId) => request(`/policies/${encodeURIComponent(policyId)}/articles`);

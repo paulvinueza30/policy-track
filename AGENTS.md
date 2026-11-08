@@ -139,7 +139,7 @@ Browser ──> Next.js frontend (React, JS) ──> FastAPI backend (Python) �
 - This is the one exception to rule 4: map shapes are bundled with the frontend, because they aren't member or vote data and never change during a Congress.
 - **Regenerate when a new Congress starts** (the 120th begins January 2027, and several states have redrawn their maps). TIGERweb's Legislative service already lists a 120th Congress layer.
 
-### 4.6 Member photos (backend done; the frontend uses initials for now)
+### 4.6 Member photos (backend URLs, frontend portraits with initials fallback)
 - **Yes, photos can come from an API.** The backend saves one URL per member in `photoUrl` during ingest, and the API already returns it. The frontend never calls a photo service itself.
 - **Primary source:** `https://unitedstates.github.io/images/congress/225x275/{bioguideId}.jpg`. No key needed. Public-domain official portraits. Works from our network. Checked November 2026: 518 of 533 current members and 165 of 174 former members in the window have a photo.
 - **Second source:** Congress.gov `GET /member/{bioguideId}` returns `depiction.imageUrl`. The ingest uses it to fill the gaps when Congress.gov responds. It sometimes hangs, so the ingest checks it once and skips it for that run if it doesn't answer.
@@ -350,7 +350,7 @@ CLAUDE.md
 | House vote source | House Clerk XML, falling back to Voteview | **Decided** |
 | House scope details | Voting members of the 50 states only; skip Speaker elections; no ZIP lookup | **Proposed**, confirm with team |
 | District map | Clickable per-state map from Census boundary files, current Congress only | **Decided** |
-| Member photos | Initials for now; add `unitedstates/images` through `photoUrl` later | **Decided** |
+| Member photos | Use backend `photoUrl`, with initials fallback | **Decided** |
 | Data model for both chambers | One `members` collection and `Member` model; `s-`/`h-` vote ID prefixes | **Built**, confirm with team |
 | Firebase plan | Blaze required for the full load (about $2) | _TBD_, Firebase owner |
 | Ingest strategy | Pre-ingest with `backend/scripts/ingest.py`; API reads only Firestore (plus GNews for articles) | **Decided** |
@@ -474,7 +474,7 @@ Members list:
 | `SenateMap` | Rename `StateMap`; remove Senate-specific text |
 | New `DistrictMap` | Per-state clickable district map (see §12.2); shares `StateMap`'s tooltip and selected styles |
 | New `ChamberToggle` | The `Senators` / `House Reps` toggle |
-| `Portrait({ senator })` | `Portrait({ member })`. Keep initials for now (§12.7) |
+| `Portrait({ senator })` | `Portrait({ member })`. Use API photo with initials fallback (§12.7) |
 | `DelegationExplorer` | Use `ChamberToggle`; swap the map by chamber; props become `members`, `chamber`, `district` |
 | `RollCall` | Use `memberVotes`; add filters and grouping for long lists |
 | `VoteCard` and the All votes row | Show a `Senate`/`House` chip where the chamber isn't obvious from the page |
@@ -519,11 +519,11 @@ Add these to `VOTE_TYPES` in `lib/display.js`. **Order matters: test the specifi
 - [ ] A House vote page is usable with 435 members on desktop and phone
 - [ ] A bill voted on in both chambers shows both on its policy page
 
-### 12.7 Member photos: keep the initials for now
+### 12.7 Member photos: API portraits with initials fallback
 
-**Don't add photos yet.** Keep the initials in `Portrait`, and build it so photos can be added later with a small change:
+**Photos enabled by user request.** Render the API-provided `photoUrl` in `Portrait`, with initials for missing or failed images:
 
 - Pass the whole `member` to `Portrait`, and keep the image area the same size and shape as the current initials circle so the layout won't move.
-- When the photo work starts, the backend will fill `member.photoUrl` (§4.6). `Portrait` then shows the image when `photoUrl` exists and falls back to initials when it's `null` or the image fails to load.
+- The backend fills `member.photoUrl` (§4.6). `Portrait` then shows the image when `photoUrl` exists and falls back to initials when it's `null` or the image fails to load.
 - Use `alt=""` when the name is already shown beside the photo, and add the photo host to `images.remotePatterns` in `next.config.mjs` if using `next/image`.
 - Never build a photo URL or call a photo service in the frontend. Only use `photoUrl` from our API.

@@ -3,11 +3,12 @@ import { notFound } from "next/navigation";
 import PolicySummary from "@/components/PolicySummary";
 import { RollCall } from "@/components/VoteLens";
 import { ApiError, getAiSummary, getPolicy, getPolicyArticles, getVote } from "@/lib/api";
-import { externalHref, findState, formatDate, voteHref } from "@/lib/display";
+import { externalHref, findState, formatDate, voteHref, chamberLabel, stateHref, readNavigationContext } from "@/lib/display";
 
 export default async function PolicyPage({ params, searchParams }) {
   const { policyId } = await params;
-  const { state: stateCode, vote: voteId } = await searchParams;
+  const query = await searchParams;
+  const { state: stateCode, vote: voteId } = query;
   const state = findState(stateCode);
   const policy = await getPolicy(policyId).catch((error) => {
     if (!(error instanceof ApiError)) throw error;
@@ -17,6 +18,7 @@ export default async function PolicyPage({ params, searchParams }) {
   if (!policy) return <main className="frame page"><p className="panel empty">The policy details are unavailable right now.</p></main>;
 
   const selected = policy.votes.find((item) => item.voteId === voteId) ?? policy.votes[0];
+  const context = readNavigationContext(query, selected?.chamber ?? "senate");
   const [rollCall, articles] = await Promise.all([
     selected ? getVote(selected.voteId).catch((error) => {
       if (!(error instanceof ApiError)) throw error;
@@ -50,7 +52,8 @@ export default async function PolicyPage({ params, searchParams }) {
     <main className="frame page">
       <nav className="breadcrumbs" aria-label="Breadcrumb">
         <Link href="/">U.S. Congress</Link>
-        {state && <><span aria-hidden="true">›</span><Link href={"/state/" + code}>{state.name} Delegation</Link></>}
+        {state && <><span aria-hidden="true">›</span><Link href={stateHref(code, context.chamber, context.district, context.bioguideId)}>{state.name} Delegation</Link></>}
+      {context.bioguideId && <><span aria-hidden="true">›</span><Link href={"/member/" + context.bioguideId + "?chamber=" + context.chamber}>Member profile</Link></>}
       </nav>
       <article className="panel policy stack">
         <header>
@@ -59,13 +62,13 @@ export default async function PolicyPage({ params, searchParams }) {
           {officialLink && <a href={officialLink}>View on Congress.gov →</a>}
           {policy.crsSummary && <p>{policy.crsSummary}</p>}
         </header>
-        {policy.votes.length > 1 && (
+        {policy.votes.length > 0 && (
           <section className="policy-section">
-            <h2>Roll Calls on This Policy</h2>
+            <h2>Votes in Congress</h2>
             <ul className="roll-calls">
               {policy.votes.map((vote) => (
                 <li key={vote.voteId}>
-                  <Link href={voteHref(vote, code)} aria-current={vote.voteId === selected.voteId ? "page" : undefined}>{vote.question}</Link>
+                  <Link href={voteHref(vote, code, context)} aria-current={vote.voteId === selected.voteId ? "page" : undefined}><span className="tag">{chamberLabel(vote.chamber)}</span> {vote.question}</Link>
                   <time dateTime={vote.date}>{formatDate(vote.date)}</time>
                 </li>
               ))}

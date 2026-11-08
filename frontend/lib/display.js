@@ -17,6 +17,17 @@ export function formatDate(value) {
 // Plain-English vote types. Keep these factual: a Yea on a procedural vote is not
 // necessarily support for the measure itself. Order matters (cloture comes first).
 const VOTE_TYPES = [
+  [/suspend the rules/i, "Fast-track vote (needs two-thirds)"],
+  [/objections of the president/i, "Vote to override a veto"],
+  [/previous question/i, "Vote to end debate and move to a vote"],
+  [/motion to recommit|motion to commit/i, "Vote to send it back to committee"],
+  [/motion to refer/i, "Vote to send it to a committee"],
+  [/motion to concur/i, "Vote on the Senate's changes"],
+  [/motion to instruct/i, "Vote to instruct negotiators"],
+  [/motion to adjourn/i, "Vote to adjourn"],
+  [/motion to reconsider/i, "Vote to reconsider"],
+  [/consideration of the resolution/i, "Vote to start considering it"],
+  [/agreeing to the resolution/i, "Vote to pass it"],
   [/cloture/i, "Vote to end debate"],
   [/motion to proceed/i, "Vote to start considering it"],
   [/motion to discharge/i, "Vote to pull it out of committee"],
@@ -39,9 +50,13 @@ export function voteSubtitle(vote) {
   return [voteType(vote.question), vote.documentLabel].filter(Boolean).join(" · ");
 }
 
-export function voteHref(vote, stateCode) {
+export function voteHref(vote, stateCode, context = {}) {
   const params = new URLSearchParams();
   if (stateCode) params.set("state", stateCode);
+  const chamber = context.chamber ?? vote.chamber;
+  if (chamber) params.set("chamber", chamber);
+  if (context.bioguideId) params.set("member", context.bioguideId);
+  if (chamber === "house" && Number.isInteger(context.district)) params.set("district", context.district);
   if (vote.policyId) params.set("vote", vote.voteId);
   const query = params.size ? "?" + params : "";
   return vote.policyId
@@ -56,4 +71,33 @@ export function externalHref(value) {
   } catch {
     return undefined;
   }
+}
+
+export const chamberLabel = (chamber) => chamber === "house" ? "House" : chamber === "senate" ? "Senate" : "Congress";
+export const memberTitle = (member) => member.chamber === "house" ? "Representative" : "Senator";
+export const partyTone = (party) => /^(D|Democrat|Democratic)$/i.test(party ?? "") ? "democrat" : /^(R|Republican)$/i.test(party ?? "") ? "republican" : /^(I|Independent)$/i.test(party ?? "") ? "independent" : "other";
+export function ordinal(number) {
+  return number + ((number % 100 >= 11 && number % 100 <= 13) ? "th" : ({ 1: "st", 2: "nd", 3: "rd" }[number % 10] ?? "th"));
+}
+export function districtLabel(member) {
+  return member.district === 0 ? member.state + " · At-large" : member.district != null ? member.state + "-" + member.district + " · " + ordinal(member.district) + " District" : member.state + " · Statewide";
+}
+export function stateHref(code, chamber = "senate", district = null, member = null) {
+  const query = new URLSearchParams({ chamber });
+  if (chamber === "house" && district != null) query.set("district", district);
+  if (member) query.set("member", member);
+  return "/state/" + code + "?" + query;
+}
+
+// Keep the originating delegation when moving between votes on a policy.
+export function readNavigationContext(query, fallbackChamber) {
+  return {
+    chamber: ["house", "senate"].includes(query.chamber) ? query.chamber : fallbackChamber,
+    district: typeof query.district === "string" && /^\d{1,2}$/.test(query.district) ? Number(query.district) : null,
+    bioguideId: typeof query.member === "string" && /^[A-Z]\d{6}$/i.test(query.member) ? query.member.toUpperCase() : null,
+  };
+}
+export function memberHref(member) {
+  const query = new URLSearchParams({ chamber: member.chamber });
+  return "/member/" + encodeURIComponent(member.bioguideId) + "?" + query;
 }
