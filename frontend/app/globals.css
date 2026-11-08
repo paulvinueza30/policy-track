@@ -171,3 +171,42 @@ select, input[type="date"] { min-width: 0; width: 100%; padding: .45rem .55rem; 
   .profile > .button { margin-left: 0; }
   .tallies { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* Party identifies the member; vote positions keep their own independent badges. */
+.party-democrat { --party: #1d4ed8; --party-soft: #eff6ff; --party-line: #93c5fd; }
+.party-republican { --party: #b91c1c; --party-soft: #fef2f2; --party-line: #fca5a5; }
+.party-independent { --party: #6d28d9; --party-soft: #f5f3ff; --party-line: #c4b5fd; }
+.party-other { --party: #475569; --party-soft: #f8fafc; --party-line: #cbd5e1; }
+.member-card { border-color: var(--party-line); border-left: 4px solid var(--party); background: var(--party-soft); }
+.member-card strong, .party-text { color: var(--party); }
+.member-card:hover, .member-card[aria-current] { border-color: var(--party); background: var(--party-soft); box-shadow: inset 0 0 0 1px var(--party); }
+.member-card .arrow { color: var(--party); }
+.active-senator, .profile { border-top: 3px solid var(--party, var(--accent)); }
+.portrait { place-content: normal; place-items: center; flex-shrink: 0; border-color: var(--party-line, var(--line)); background: var(--party-soft, var(--surface-variant)); color: var(--party, var(--ink)); }
+.portrait img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }
+.explorer-welcome { display: grid; gap: .8rem; padding: 1.2rem; border-radius: .7rem; background: var(--surface); }
+.party-legend { display: flex; flex-wrap: wrap; gap: .8rem; font-size: .75rem; }
+.party-legend span { color: var(--party); font-weight: 700; }
+.party-legend span::before { content: ""; display: inline-block; width: .5rem; height: .5rem; margin-right: .3rem; border-radius: 50%; background: var(--party); }
+.district-map { display: block; width: 100%; height: auto; margin-block: .5rem; }
+.district-map path { fill: #ccfbf1; stroke: #0f766e; stroke-width: 1; vector-effect: non-scaling-stroke; transition: fill 120ms; }
+.district-map a:hover path, .district-map a:focus-visible path { fill: #5eead4; stroke: var(--ink); stroke-width: 2; }
+.district-map a[aria-current] path { fill: var(--teal); stroke: var(--ink); stroke-width: 2; }
+.district-selector { display: grid; gap: .4rem; font-size: .85rem; font-weight: 700; }
+.map-note { margin-block: .7rem .35rem; color: var(--muted); font-size: .75rem; }
+.district-help { font-size: .8rem; }
+.map-tooltip { z-index: 2; width: max-content; max-width: min(14rem, 85%); }
+.role-history { display: grid; gap: .65rem; padding: 1rem; margin-bottom: 1rem; font-size: .85rem; }
+.role-history .segments { justify-self: start; }
+.vote-state-group { border: 1px solid var(--light-line); border-radius: .55rem; padding: .7rem; }
+.vote-state-group summary { cursor: pointer; font-weight: 700; }
+.vote-state-group summary span { float: right; font-size: .8rem; font-weight: 400; color: var(--muted); }
+.party-text { display: block; }
+.rollcall-filters { padding-inline: 0; margin-bottom: 0; }
+@media (max-width: 520px) {
+  .chamber-toggle { width: 100%; }
+  .chamber-toggle a { flex: 1; text-align: center; padding-block: .7rem; }
+  .district-selector select { min-height: 44px; }
+  .district-map { min-height: 220px; }
+  .member-card { padding-block: .85rem; }
+}

@@ -1,0 +1,1 @@
+export default function Loading() { return <main className="frame page"><p className="panel empty" role="status">Loading congressional records…</p></main>; }
