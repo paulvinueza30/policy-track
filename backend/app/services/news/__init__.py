@@ -27,7 +27,7 @@ def build_query(policy: Policy) -> str:
     phrase = policy.short_title or policy.title
     words = _clean(phrase).split()
     if len(words) > 8:  # long official titles ("To provide for...") match nothing
-        return f'"{display_number(policy.type, policy.number)}" Senate'
+        return f'"{display_number(policy.type, policy.number)}" Congress'
     return f'"{" ".join(words)}"'
 
 

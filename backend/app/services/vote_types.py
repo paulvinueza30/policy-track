@@ -9,7 +9,7 @@ POSITIONS = ("Yea", "Nay", "Present", "Not Voting")
 
 @dataclass
 class ParsedPosition:
-    member_key: str  # LIS id (senate.gov) or bioguide id (Voteview)
+    member_key: str  # LIS id (senate.gov) or bioguide id (House Clerk, Voteview)
     position: str  # one of POSITIONS
     name: str | None = None
     party: str | None = None
@@ -18,6 +18,7 @@ class ParsedPosition:
 
 @dataclass
 class ParsedVote:
+    chamber: str  # "senate" or "house"
     congress: int
     session: int
     vote_number: int
@@ -32,7 +33,7 @@ class ParsedVote:
 
     @property
     def vote_id(self) -> str:
-        return make_vote_id(self.congress, self.session, self.vote_number)
+        return make_vote_id(self.chamber, self.congress, self.session, self.vote_number)
 
     def tally(self) -> dict[str, int]:
         counts = {p: 0 for p in POSITIONS}
@@ -42,8 +43,9 @@ class ParsedVote:
                 "present": counts["Present"], "notVoting": counts["Not Voting"]}
 
 
-def make_vote_id(congress: int, session: int, vote_number: int) -> str:
-    return f"{congress}-{session}-{vote_number:05d}"
+def make_vote_id(chamber: str, congress: int, session: int, vote_number: int) -> str:
+    """Vote numbers restart per chamber and session: ("house", 119, 1, 42) -> "h-119-1-00042"."""
+    return f"{chamber[0]}-{congress}-{session}-{vote_number:05d}"
 
 
 def normalize_policy_id(doc_type: str | None, number: str | None, congress: int | str) -> str | None:
@@ -75,3 +77,8 @@ def congress_for_year(year: int) -> tuple[int, int]:
     congress = (year - 1789) // 2 + 1
     session = 1 if year % 2 == 1 else 2
     return congress, session
+
+
+def session_year(congress: int, session: int) -> int:
+    """(119, 1) -> 2025."""
+    return 1789 + (congress - 1) * 2 + session - 1

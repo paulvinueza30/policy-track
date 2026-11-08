@@ -1,8 +1,8 @@
-"""Voteview (UCLA) Senate roll-call CSVs: fallback when senate.gov blocks us.
+"""Voteview (UCLA) roll-call CSVs: fallback when senate.gov or the House Clerk blocks us.
 
-Files are per Congress:
+Files are per chamber and Congress:
   rollcalls: one row per vote (date, clerk vote number, bill number, question, result)
-  votes:     one row per senator per vote (icpsr id + cast code)
+  votes:     one row per member per vote (icpsr id + cast code)
   members:   icpsr id -> bioguide id, name, state
 """
 import csv
@@ -24,8 +24,8 @@ CAST_CODES = {"1": "Yea", "6": "Nay", "7": "Present", "8": "Present",
 PARTY_CODES = {"100": "D", "200": "R", "328": "I"}
 
 
-def csv_url(kind: str, congress: int) -> str:
-    return f"{BASE}/{kind}/S{congress}_{kind}.csv"
+def csv_url(kind: str, chamber: str, congress: int) -> str:
+    return f"{BASE}/{kind}/{chamber[0].upper()}{congress}_{kind}.csv"
 
 
 def split_bill_number(bill: str) -> tuple[str, str] | tuple[None, None]:
@@ -39,11 +39,13 @@ def split_bill_number(bill: str) -> tuple[str, str] | tuple[None, None]:
     return bill[:i], bill[i:]
 
 
-def parse_congress(rollcalls_csv: str, votes_csv: str, members_csv: str) -> list[ParsedVote]:
-    """Combine the three Voteview CSVs for one Congress into ParsedVotes keyed by bioguide id."""
+def parse_congress(chamber: str, rollcalls_csv: str, votes_csv: str, members_csv: str) -> list[ParsedVote]:
+    """Combine the three Voteview CSVs for one chamber and Congress into ParsedVotes keyed by bioguide id."""
+    chamber_name = chamber.capitalize()
     members = {}
     for row in csv.DictReader(io.StringIO(members_csv)):
-        if row["chamber"] == "Senate" and row.get("bioguide_id"):
+        # Delegates stay in: they count toward official tallies on some House amendment votes.
+        if row["chamber"] == chamber_name and row.get("bioguide_id"):
             members[row["icpsr"]] = row
 
     casts: dict[str, list[ParsedPosition]] = {}
@@ -61,10 +63,14 @@ def parse_congress(rollcalls_csv: str, votes_csv: str, members_csv: str) -> list
 
     votes = []
     for row in csv.DictReader(io.StringIO(rollcalls_csv)):
+        # Speaker elections are votes for a person, and some rows have no official number.
+        if row.get("vote_question") == "Election of the Speaker" or not row.get("clerk_rollnumber"):
+            continue
         congress = int(row["congress"])
         doc_type, number = split_bill_number(row.get("bill_number", ""))
         day = datetime.strptime(row["date"], "%Y-%m-%d")
         votes.append(ParsedVote(
+            chamber=chamber,
             congress=congress,
             session=int(row["session"]),
             vote_number=int(row["clerk_rollnumber"]),
@@ -80,10 +86,10 @@ def parse_congress(rollcalls_csv: str, votes_csv: str, members_csv: str) -> list
     return votes
 
 
-async def fetch_congress(client: httpx.AsyncClient, congress: int) -> list[ParsedVote]:
+async def fetch_congress(client: httpx.AsyncClient, chamber: str, congress: int) -> list[ParsedVote]:
     texts = []
     for kind in ("rollcalls", "votes", "members"):
-        res = await client.get(csv_url(kind, congress))
+        res = await client.get(csv_url(kind, chamber, congress))
         res.raise_for_status()
         texts.append(res.text)
-    return parse_congress(*texts)
+    return parse_congress(chamber, *texts)

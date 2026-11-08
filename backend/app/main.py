@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException
 
 from app.config import settings
-from app.routers import ai, health, policies, senators, states, votes
+from app.routers import ai, health, members, policies, senators, states, votes
 
 app = FastAPI(title="Senate Vote Tracker API")
 
@@ -40,5 +40,5 @@ async def unexpected_error(_: Request, exc: Exception):
     return error_response(500, "internal_error", "Something went wrong on the server")
 
 
-for router in (health.router, states.router, senators.router, votes.router, policies.router, ai.router):
+for router in (health.router, states.router, members.router, senators.router, votes.router, policies.router, ai.router):
     app.include_router(router, prefix="/api")

@@ -8,7 +8,7 @@ from datetime import datetime
 from google.cloud.firestore_v1.base_query import FieldFilter
 from google.cloud import firestore
 
-from app.models import Article, Policy, Senator, SenatorVote, Vote
+from app.models import Article, Member, MemberVote, Policy, Vote
 
 BATCH_LIMIT = 500
 
@@ -27,17 +27,19 @@ class Repository:
 
     # ---------- reads (API) ----------
 
-    async def senators_by_state(self, state: str) -> list[dict]:
-        q = self.db.collection("senators").where(filter=FieldFilter("state", "==", state))
+    async def members_by_state(self, state: str) -> list[dict]:
+        q = self.db.collection("members").where(filter=FieldFilter("state", "==", state))
         return [d.to_dict() async for d in q.stream()]
 
-    async def get_senator(self, bioguide_id: str) -> dict | None:
-        snap = await self.db.collection("senators").document(bioguide_id).get()
+    async def get_member(self, bioguide_id: str) -> dict | None:
+        snap = await self.db.collection("members").document(bioguide_id).get()
         return snap.to_dict() if snap.exists else None
 
-    async def senator_votes(self, bioguide_id: str, start: datetime, end: datetime,
-                            position: str | None, page: int, page_size: int) -> tuple[list[dict], int]:
-        q = self.db.collection("senators").document(bioguide_id).collection("votes")
+    async def member_votes(self, bioguide_id: str, start: datetime, end: datetime, chamber: str | None,
+                           position: str | None, page: int, page_size: int) -> tuple[list[dict], int]:
+        q = self.db.collection("members").document(bioguide_id).collection("votes")
+        if chamber:
+            q = q.where(filter=FieldFilter("chamber", "==", chamber))
         if position:
             q = q.where(filter=FieldFilter("position", "==", position))
         q = q.where(filter=FieldFilter("date", ">=", start)).where(filter=FieldFilter("date", "<=", end))
@@ -59,7 +61,8 @@ class Repository:
         q = (self.db.collection("votes").where(filter=FieldFilter("policyId", "==", policy_id))
              .order_by("date", direction=firestore.Query.DESCENDING)
              .order_by("voteNumber", direction=firestore.Query.DESCENDING))
-        return [d.to_dict() async for d in q.stream()]
+        # Votes saved before the House was added have no chamber and use old IDs.
+        return [doc for d in [d async for d in q.stream()] if "chamber" in (doc := d.to_dict())]
 
     async def get_articles(self, policy_id: str) -> list[dict]:
         q = self.db.collection("policies").document(policy_id).collection("articles")
@@ -78,15 +81,15 @@ class Repository:
 
     # ---------- writes (ingest) ----------
 
-    async def write_senators(self, senators: list[Senator]) -> None:
-        for i in range(0, len(senators), BATCH_LIMIT):
+    async def write_members(self, members: list[Member]) -> None:
+        for i in range(0, len(members), BATCH_LIMIT):
             batch = self.db.batch()
-            for s in senators[i:i + BATCH_LIMIT]:
-                batch.set(self.db.collection("senators").document(s.bioguide_id), _dump(s), merge=True)
+            for m in members[i:i + BATCH_LIMIT]:
+                batch.set(self.db.collection("members").document(m.bioguide_id), _dump(m), merge=True)
             await batch.commit()
 
-    async def write_vote_batch(self, items: list[tuple[Vote, list[SenatorVote]]]) -> None:
-        """Write votes + each senator's copy. Each vote is 1 + ~100 writes, so batch a few at a time."""
+    async def write_vote_batch(self, items: list[tuple[Vote, list[MemberVote]]]) -> None:
+        """Write votes + each member's copy: 1 + ~100 writes (Senate) or 1 + ~435 (House) per vote."""
         batch, ops = self.db.batch(), 0
         for vote, members in items:
             if ops + 1 + len(members) > BATCH_LIMIT:
@@ -99,7 +102,7 @@ class Repository:
                 "members": [_dump(m) for m in members],
             })
             for m in members:
-                ref = (self.db.collection("senators").document(m.bioguide_id)
+                ref = (self.db.collection("members").document(m.bioguide_id)
                        .collection("votes").document(vote.vote_id))
                 batch.set(ref, {**vote_data, "position": m.position})
             ops += 1 + len(members)

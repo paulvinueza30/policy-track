@@ -60,6 +60,15 @@ class CongressClient:
             raise CongressApiError(f"Congress.gov {res.status_code} for {path}")
         return res.json()
 
+    async def reachable(self) -> bool:
+        """Congress.gov can accept connections and then never answer, so check once before bulk work."""
+        try:
+            res = await self.client.get(f"{BASE}/member/C000127", params={"api_key": self.api_key, "format": "json"},
+                                        timeout=15.0)
+        except httpx.HTTPError:
+            return False
+        return res.status_code < 500
+
     async def get_member_photo(self, bioguide_id: str) -> str | None:
         data = await self._get(f"/member/{bioguide_id}")
         return (data.get("member", {}).get("depiction") or {}).get("imageUrl")
