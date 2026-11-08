@@ -5,6 +5,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
+    google_client_id: str = ""
+    hud_api_key: str = ""
+
     congress_api_key: str = ""
     news_api_key: str = ""
 
