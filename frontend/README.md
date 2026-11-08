@@ -4,7 +4,7 @@ The Next.js app reads Senate data from Policy Track’s FastAPI backend. Set `NE
 
 ## Run locally
 
-Start the FastAPI backend first. The backend branch `backend-(dhyan)` has the delegation, roll-call, policy, and news endpoints. If those changes have yet to be merged into your checkout, run the backend from that branch in a separate checkout and follow its README for Firestore setup and Senate data ingest. Verify the backend at [localhost:8000/docs](http://localhost:8000/docs).
+Start FastAPI from the `backend` directory in this checkout. Follow the root README for Firestore setup and Senate data ingest. Verify the backend at [localhost:8000/docs](http://localhost:8000/docs).
 
 From the frontend directory, copy `.env.example` to `.env.local`, then run:
 

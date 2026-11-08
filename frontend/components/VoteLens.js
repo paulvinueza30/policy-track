@@ -13,7 +13,7 @@ export function Portrait({ senator }) {
   return <span className="portrait" aria-hidden="true">{initials}</span>;
 }
 
-export function DelegationExplorer({ state, senators, active, unavailable }) {
+export function DelegationExplorer({ state, senators, active, error }) {
   const stateCode = state?.code ?? "";
   return (
     <section className="panel explorer section" id="explore" aria-labelledby="explore-title">
@@ -29,8 +29,8 @@ export function DelegationExplorer({ state, senators, active, unavailable }) {
         <div className="delegation" id="delegation">
           <StatePicker key={stateCode} options={stateOptions} stateCode={stateCode} />
           {state && <h3>{state.name} Senate Delegation</h3>}
-          {unavailable && <p className="empty">The delegation is unavailable right now. Try again later.</p>}
-          {senators?.length === 0 && <p className="empty">No senators were returned for this state.</p>}
+          {error && <p className="empty" role="status">{error}</p>}
+          {senators?.length === 0 && <p className="empty">No Senate records are available for this state yet.</p>}
           {active && (
             <>
               <ul className="senator-list">

@@ -1,8 +1,9 @@
 """FastAPI app entry point. Run: uvicorn app.main:app --reload"""
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException
 
 from app.config import settings
 from app.routers import ai, health, policies, senators, states, votes
@@ -29,7 +30,14 @@ async def http_error(_: Request, exc: HTTPException):
 
 @app.exception_handler(RequestValidationError)
 async def validation_error(_: Request, exc: RequestValidationError):
-    return error_response(422, "validation_error", str(exc.errors()))
+    first = exc.errors()[0] if exc.errors() else {}
+    where = ".".join(str(p) for p in first.get("loc", []) if p not in ("query", "path", "body"))
+    return error_response(422, "validation_error", f"{where}: {first.get('msg', 'invalid request')}")
+
+
+@app.exception_handler(Exception)
+async def unexpected_error(_: Request, exc: Exception):
+    return error_response(500, "internal_error", "Something went wrong on the server")
 
 
 for router in (health.router, states.router, senators.router, votes.router, policies.router, ai.router):

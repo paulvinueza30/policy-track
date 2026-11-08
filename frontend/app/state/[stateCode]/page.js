@@ -10,10 +10,16 @@ export default async function StatePage({ params, searchParams }) {
   const state = findState(stateCode);
   if (!state) notFound();
 
-  const senators = await getStateSenators(state.code).catch((error) => {
+  const delegation = await getStateSenators(state.code).catch((error) => {
     if (!(error instanceof ApiError)) throw error;
-    return null;
+    return error;
   });
+  const senators = delegation instanceof ApiError ? null : delegation;
+  const message = delegation instanceof ApiError ? {
+    0: "VoteLens could not reach the FastAPI backend.",
+    501: "This backend version does not provide Senate delegations.",
+    503: "The backend is running, but its Senate data store is unavailable.",
+  }[delegation.status] ?? "The delegation is unavailable right now. Try again later." : undefined;
   const active = senators?.find(({ bioguideId }) => bioguideId === senator) ?? senators?.[0];
   const votes = active ? await getSenatorVotes(active.bioguideId, { pageSize: 3 }).catch((error) => {
     if (!(error instanceof ApiError)) throw error;
@@ -27,7 +33,7 @@ export default async function StatePage({ params, searchParams }) {
         <p className="eyebrow">State delegation</p>
         <h1>{state.name}</h1>
       </div>
-      <DelegationExplorer state={state} senators={senators} active={active} unavailable={senators === null} />
+      <DelegationExplorer state={state} senators={senators} active={active} error={message} />
       {active && (
         <section className="section" id="voting-record">
           <div className="section-heading">
