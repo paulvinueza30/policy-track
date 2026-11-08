@@ -8,7 +8,7 @@ export { default as Portrait } from "./Portrait";
 import StatePicker from "./StatePicker";
 import states from "@/lib/states.json";
 
-import { formatDate, voteHref, voteSubtitle, chamberLabel, districtLabel, memberTitle, partyTone, stateHref } from "@/lib/display";
+import { formatDate, voteHref, voteSubtitle, chamberLabel, districtLabel, memberTitle, partyTone, stateHref, memberHref } from "@/lib/display";
 
 const stateOptions = states.map(({ code, name }) => ({ code, name }));
 const tallyLabels = { yea: "Yea", nay: "Nay", present: "Present", notVoting: "Not Voting" };
@@ -33,7 +33,7 @@ export function DelegationExplorer({ state, members, active, error, chamber = "s
           <Link className={"senator-link member-card party-" + partyTone(member.party)} href={stateHref(stateCode, chamber, district, member.bioguideId) + "#delegation"} aria-current={active?.bioguideId === member.bioguideId ? "true" : undefined}>
             <Portrait member={member} /><span><strong>{member.name}</strong><small>{member.party} · {member.inOfficeTo ? "Former" : "Current"} {memberTitle(member).toLowerCase()}</small>{chamber === "house" && <small>{districtLabel(member)}</small>}</span><span className="arrow" aria-hidden="true">{active?.bioguideId === member.bioguideId ? "✓" : "→"}</span>
           </Link></li>)}</ul>}
-        {active && <div className={"active-senator party-" + partyTone(active.party)}><p className="eyebrow">Selected {memberTitle(active).toLowerCase()}</p><h3>{active.name}</h3><p>{districtLabel(active)} · {active.party}</p><Link className="button" href={"/member/" + encodeURIComponent(active.bioguideId)}>Open member profile →</Link></div>}
+        {active && <div className={"active-senator party-" + partyTone(active.party)}><p className="eyebrow">Selected {memberTitle(active).toLowerCase()}</p><h3>{active.name}</h3><p>{districtLabel(active)} · {active.party}</p><Link className="button" href={memberHref(active)}>Open member profile →</Link></div>}
       </div>
     </div>
   </section>;
@@ -44,7 +44,7 @@ export function VoteBadge({ position }) {
   return <span className={"vote-badge " + tone}>{position}</span>;
 }
 
-export function VoteCard({ vote, stateCode }) {
+export function VoteCard({ vote, stateCode, member }) {
   return (
     <article className="panel vote-card">
       <div className="vote-meta">
@@ -56,7 +56,7 @@ export function VoteCard({ vote, stateCode }) {
       <p className="vote-subtitle">{voteSubtitle(vote)}</p>
       <div className="vote-footer">
         <span>{vote.result}</span>
-        <Link href={voteHref(vote, stateCode)}>{vote.policyId ? "View vote and policy" : "View roll call"} →</Link>
+        <Link href={voteHref(vote, stateCode, member)}>{vote.policyId ? "View vote and policy" : "View roll call"} →</Link>
       </div>
     </article>
   );

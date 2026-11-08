@@ -50,9 +50,13 @@ export function voteSubtitle(vote) {
   return [voteType(vote.question), vote.documentLabel].filter(Boolean).join(" · ");
 }
 
-export function voteHref(vote, stateCode) {
+export function voteHref(vote, stateCode, context = {}) {
   const params = new URLSearchParams();
   if (stateCode) params.set("state", stateCode);
+  const chamber = context.chamber ?? vote.chamber;
+  if (chamber) params.set("chamber", chamber);
+  if (context.bioguideId) params.set("member", context.bioguideId);
+  if (chamber === "house" && Number.isInteger(context.district)) params.set("district", context.district);
   if (vote.policyId) params.set("vote", vote.voteId);
   const query = params.size ? "?" + params : "";
   return vote.policyId
@@ -83,4 +87,17 @@ export function stateHref(code, chamber = "senate", district = null, member = nu
   if (chamber === "house" && district != null) query.set("district", district);
   if (member) query.set("member", member);
   return "/state/" + code + "?" + query;
+}
+
+// Keep the originating delegation when moving between votes on a policy.
+export function readNavigationContext(query, fallbackChamber) {
+  return {
+    chamber: ["house", "senate"].includes(query.chamber) ? query.chamber : fallbackChamber,
+    district: typeof query.district === "string" && /^\d{1,2}$/.test(query.district) ? Number(query.district) : null,
+    bioguideId: typeof query.member === "string" && /^[A-Z]\d{6}$/i.test(query.member) ? query.member.toUpperCase() : null,
+  };
+}
+export function memberHref(member) {
+  const query = new URLSearchParams({ chamber: member.chamber });
+  return "/member/" + encodeURIComponent(member.bioguideId) + "?" + query;
 }

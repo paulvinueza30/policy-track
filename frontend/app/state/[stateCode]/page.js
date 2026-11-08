@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DelegationExplorer, VoteCard } from "@/components/VoteLens";
 import { ApiError, getMemberVotes, getStateMembers } from "@/lib/api";
-import { findState } from "@/lib/display";
+import { findState, memberHref } from "@/lib/display";
 
 export default async function StatePage({ params, searchParams }) {
   const { stateCode } = await params;
@@ -44,10 +44,10 @@ export default async function StatePage({ params, searchParams }) {
         <section className="section" id="voting-record">
           <div className="section-heading">
             <div><p className="eyebrow">Recent roll calls</p><h2>Voting Record: {active.name}</h2></div>
-            <Link className="button" href={"/member/" + encodeURIComponent(active.bioguideId)}>View full voting record →</Link>
+            <Link className="button" href={memberHref(active)}>View full voting record →</Link>
           </div>
           {votes?.items.length ? (
-            <div className="stack">{votes.items.slice(0, 3).map((vote) => <VoteCard key={vote.voteId} vote={vote} stateCode={state.code} />)}</div>
+            <div className="stack">{votes.items.slice(0, 3).map((vote) => <VoteCard key={vote.voteId} vote={vote} stateCode={state.code} member={active} />)}</div>
           ) : <p className="panel empty">{votes ? "No votes were returned for this member." : "The voting record is unavailable right now."}</p>}
         </section>
       )}

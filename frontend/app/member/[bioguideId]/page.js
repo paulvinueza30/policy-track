@@ -37,7 +37,9 @@ export default async function MemberPage({ params, searchParams }) {
   }
   if (record.status === "rejected" && !(record.reason instanceof ApiError)) throw record.reason;
   const member = profile.value;
-  const state = findState(member.state);
+  const selectedRole = chamber ? member.roles?.filter(role => role.chamber === chamber).at(-1) : null;
+  const navigationMember = selectedRole ? { ...member, ...selectedRole } : member;
+  const state = findState(navigationMember.state);
   const chambers = [...new Set((member.roles ?? []).map(role => role.chamber))];
   const voteHeading = chambers.length > 1 ? "Votes in Congress" : chamberLabel(member.chamber) + " Votes";
   const recordView = (view) => "?" + new URLSearchParams({view, ...(chamber ? {chamber} : {})}) + "#recent-policies";
@@ -50,7 +52,7 @@ export default async function MemberPage({ params, searchParams }) {
     <main className="frame page">
       <nav className="breadcrumbs" aria-label="Breadcrumb">
         <Link href="/">U.S. Congress</Link>
-        {state && <><span aria-hidden="true">›</span><Link href={stateHref(state.code, member.chamber, member.district, member.bioguideId) + "#delegation"}>{state.name} Delegation</Link></>}
+        {state && <><span aria-hidden="true">›</span><Link href={stateHref(state.code, navigationMember.chamber, navigationMember.district, member.bioguideId) + "#delegation"}>{state.name} Delegation</Link></>}
       </nav>
       <section className={"panel profile party-" + partyTone(member.party)}>
         <Portrait member={member} />
@@ -94,14 +96,14 @@ export default async function MemberPage({ params, searchParams }) {
               <li key={vote.voteId}>
                 <VoteBadge position={vote.position} />
                 <div className="vote-label">
-                  <Link href={voteHref(vote, state?.code)}>{vote.title || vote.question}</Link>
+                  <Link href={voteHref(vote, state?.code, navigationMember)}>{vote.title || vote.question}</Link>
                   <span className="vote-subtitle">{chamberLabel(vote.chamber)} · {voteSubtitle(vote)}</span>
                 </div>
                 <time dateTime={vote.date}>{formatDate(vote.date)}</time>
               </li>
             ))}
           </ul>
-        ) : <div className="stack">{items.map((vote) => <VoteCard key={vote.voteId} vote={vote} stateCode={state?.code} />)}</div>)}
+        ) : <div className="stack">{items.map((vote) => <VoteCard key={vote.voteId} vote={vote} stateCode={state?.code} member={navigationMember} />)}</div>)}
         {allVotes && votes && (page > 1 || page < totalPages) && (
           <nav className="vote-footer" aria-label="Vote pages">
             {page > 1 && <Link href={votePage(page - 1)}>← Previous page</Link>}
