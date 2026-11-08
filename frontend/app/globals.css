@@ -134,6 +134,7 @@ select, input[type="date"] { min-width: 0; width: 100%; padding: .45rem .55rem; 
 .segments a[aria-current] { background: var(--ink); color: white; }
 .summary { display: grid; gap: .4rem; padding: .85rem; border: 1px solid #99f6e4; border-left: 4px solid var(--accent); border-radius: .55rem; background: #f0fdfa; }
 .summary h3 { font-size: .95rem; }
+.summary { overflow-wrap: anywhere; } /* long source URLs must not widen the card on phones */
 .filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .7rem; padding: .85rem; margin-bottom: .8rem; }
 .filters label { flex: 1 1 8rem; color: var(--muted); font-size: .8rem; font-weight: 700; }
 .filters label :is(select, input) { display: block; margin-top: .25rem; }

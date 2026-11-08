@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import PolicySummary from "@/components/PolicySummary";
+import RecordSummary from "@/components/RecordSummary";
 import { RollCall } from "@/components/VoteLens";
-import { ApiError, getAiSummary, getPolicy, getPolicyArticles, getVote } from "@/lib/api";
+import { ApiError, getPolicy, getPolicyArticles, getPolicySummary, getVote } from "@/lib/api";
 import { externalHref, findState, formatDate, voteHref, chamberLabel, stateHref, readNavigationContext } from "@/lib/display";
 
 export default async function PolicyPage({ params, searchParams }) {
@@ -19,7 +19,7 @@ export default async function PolicyPage({ params, searchParams }) {
 
   const selected = policy.votes.find((item) => item.voteId === voteId) ?? policy.votes[0];
   const context = readNavigationContext(query, selected?.chamber ?? "senate");
-  const [rollCall, articles] = await Promise.all([
+  const [rollCall, articles, summary] = await Promise.all([
     selected ? getVote(selected.voteId).catch((error) => {
       if (!(error instanceof ApiError)) throw error;
       return null;
@@ -28,25 +28,13 @@ export default async function PolicyPage({ params, searchParams }) {
       if (!(error instanceof ApiError)) throw error;
       return null;
     }),
+    getPolicySummary(policy.policyId, state?.code).catch((error) => {
+      if (!(error instanceof ApiError)) throw error;
+      return null;
+    }),
   ]);
 
-  const id = policy.policyId;
   const code = state?.code;
-  async function summarize(previous, formData) {
-    "use server";
-    try {
-      const summary = await getAiSummary({
-        policyId: id,
-        ...(code ? { stateCode: code } : {}),
-        regenerate: formData.get("regenerate") === "true",
-      });
-      return { summary, error: null };
-    } catch (error) {
-      if (!(error instanceof ApiError)) throw error;
-      return { ...previous, error: "The AI summary is unavailable right now. Try again later." };
-    }
-  }
-
   const officialLink = externalHref(policy.congressGovUrl);
   return (
     <main className="frame page">
@@ -60,8 +48,8 @@ export default async function PolicyPage({ params, searchParams }) {
           <p className="eyebrow">Policy · {policy.congress}th Congress</p>
           <h1>{policy.title}</h1>
           {officialLink && <a href={officialLink}>View on Congress.gov →</a>}
-          {policy.crsSummary && <p>{policy.crsSummary}</p>}
         </header>
+        <RecordSummary summary={summary} officialText={policy.crsSummary} />
         {policy.votes.length > 0 && (
           <section className="policy-section">
             <h2>Votes in Congress</h2>
@@ -81,7 +69,6 @@ export default async function PolicyPage({ params, searchParams }) {
             <RollCall vote={rollCall ?? selected} state={state} positionsUnavailable={!rollCall} />
           </>
         )}
-        <PolicySummary key={id + ":" + (code ?? "")} summarize={summarize} />
         <section className="policy-section" id="news">
           <h2>Related Policy News</h2>
           {articles === null ? <p>Related news is unavailable right now.</p>

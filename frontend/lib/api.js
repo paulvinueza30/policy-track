@@ -35,6 +35,8 @@ export const getMemberVotes = (id, params = {}) => request(`/members/${encodeURI
 export const getVote = (voteId) => request(`/votes/${encodeURIComponent(voteId)}`);
 export const getPolicy = (policyId) => request(`/policies/${encodeURIComponent(policyId)}`);
 export const getPolicyArticles = (policyId) => request(`/policies/${encodeURIComponent(policyId)}/articles`);
+export const getPolicySummary = (policyId, stateCode) =>
+  request(`/policies/${encodeURIComponent(policyId)}/summary${stateCode ? "?" + new URLSearchParams({ stateCode }) : ""}`);
 export const getLatestNews = () => request("/news");
 const postAi = (path, body) => request(path, {
   method: "POST",
