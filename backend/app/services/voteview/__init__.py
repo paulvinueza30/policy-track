@@ -6,6 +6,7 @@ Files are per Congress:
   members:   icpsr id -> bioguide id, name, state
 """
 import csv
+import html
 import io
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -72,7 +73,7 @@ def parse_congress(rollcalls_csv: str, votes_csv: str, members_csv: str) -> list
             question=row.get("vote_question", ""),
             result=row.get("vote_result", ""),
             policy_id=normalize_policy_id(doc_type, number, congress),
-            document_title=row.get("vote_desc") or None,
+            document_title=html.unescape(row.get("vote_desc") or "") or None,  # source text can contain codes like &#38;
             positions=casts.get(row["rollnumber"], []),
             source="voteview",
         ))

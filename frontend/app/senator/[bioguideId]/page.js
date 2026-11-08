@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Portrait, VoteBadge, VoteCard } from "@/components/VoteLens";
 import { ApiError, getSenator, getSenatorVotes } from "@/lib/api";
-import { findState, formatDate, voteHref } from "@/lib/display";
+import { findState, formatDate, voteHref, voteSubtitle } from "@/lib/display";
 
 const positions = ["Yea", "Nay", "Present", "Not Voting"];
 const pageSize = 25;
@@ -87,7 +87,10 @@ export default async function SenatorPage({ params, searchParams }) {
             {items.map((vote) => (
               <li key={vote.voteId}>
                 <VoteBadge position={vote.position} />
-                <Link href={voteHref(vote, state?.code)}>{vote.question}</Link>
+                <div className="vote-label">
+                  <Link href={voteHref(vote, state?.code)}>{vote.title || vote.question}</Link>
+                  <span className="vote-subtitle">{voteSubtitle(vote)}</span>
+                </div>
                 <time dateTime={vote.date}>{formatDate(vote.date)}</time>
               </li>
             ))}

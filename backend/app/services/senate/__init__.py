@@ -3,6 +3,7 @@
 senate.gov sometimes blocks automated requests (HTTP 403). Callers should catch
 SenateBlockedError and fall back to Voteview (app.services.voteview).
 """
+import html
 import re
 import xml.etree.ElementTree as ET
 from datetime import datetime
@@ -123,8 +124,8 @@ def parse_vote(content: bytes) -> ParsedVote:
         question=_text(root, "vote_question_text") or _text(root, "question"),
         result=_text(root, "vote_result_text") or _text(root, "vote_result"),
         policy_id=policy_id,
-        document_title=_text(doc, "document_title") or _text(root, "vote_title") or None,
-        document_short_title=_text(doc, "document_short_title") or None,
+        document_title=html.unescape(_text(doc, "document_title") or _text(root, "vote_title")) or None,
+        document_short_title=html.unescape(_text(doc, "document_short_title")) or None,
         positions=positions,
         source="senate.gov",
     )

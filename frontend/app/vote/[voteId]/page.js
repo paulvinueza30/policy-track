@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RollCall } from "@/components/VoteLens";
 import { ApiError, getVote } from "@/lib/api";
-import { findState, voteHref } from "@/lib/display";
+import { findState, voteHref, voteSubtitle } from "@/lib/display";
 
 export default async function VotePage({ params, searchParams }) {
   const { voteId } = await params;
@@ -22,7 +22,7 @@ export default async function VotePage({ params, searchParams }) {
         {state && <><span aria-hidden="true">›</span><Link href={"/state/" + state.code}>{state.name} Delegation</Link></>}
       </nav>
       <article className="panel policy stack">
-        <header><p className="eyebrow">Senate roll call</p><h1>{vote.question}</h1></header>
+        <header><p className="eyebrow">Senate roll call</p><h1>{vote.title || vote.question}</h1><p className="vote-subtitle">{voteSubtitle(vote)}</p></header>
         <RollCall vote={vote} state={state} />
         {vote.policyId && <Link href={voteHref(vote, state?.code)}>View related policy →</Link>}
       </article>

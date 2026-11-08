@@ -3,7 +3,7 @@ import SenateMap from "./SenateMap";
 import StatePicker from "./StatePicker";
 import states from "@/lib/states.json";
 import { ApiError, getStateSenators } from "@/lib/api";
-import { formatDate, voteHref } from "@/lib/display";
+import { formatDate, voteHref, voteSubtitle } from "@/lib/display";
 
 const stateOptions = states.map(({ code, name }) => ({ code, name }));
 const tallyLabels = { yea: "Yea", nay: "Nay", present: "Present", notVoting: "Not Voting" };
@@ -72,7 +72,8 @@ export function VoteCard({ vote, stateCode }) {
         <span>Roll call {vote.voteNumber}</span>
         <time dateTime={vote.date}>{formatDate(vote.date)}</time>
       </div>
-      <h3>{vote.question}</h3>
+      <h3>{vote.title || vote.question}</h3>
+      <p className="vote-subtitle">{voteSubtitle(vote)}</p>
       <div className="vote-footer">
         <span>{vote.result}</span>
         <Link href={voteHref(vote, stateCode)}>{vote.policyId ? "View vote and policy" : "View roll call"} →</Link>

@@ -40,6 +40,8 @@ class Vote(CamelModel):
     result: str
     policy_id: str | None = None
     tally: Tally
+    title: str | None = None  # what the vote was about, e.g. the bill title or nominee
+    document_label: str | None = None  # e.g. "H.R. 6938" or "PN 373"
 
 
 class SenatorVote(CamelModel):

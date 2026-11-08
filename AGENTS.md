@@ -129,7 +129,8 @@ These are the shared contract between frontend and backend, so don't rename fiel
 
 // Vote (one Senate roll call)
 { voteId /* "119-1-00042" */, congress, session, voteNumber, date, question, result,
-  policyId /* nullable */, tally: { yea, nay, present, notVoting } }
+  policyId /* nullable */, tally: { yea, nay, present, notVoting },
+  title /* what it's about: bill title or nominee; nullable */, documentLabel /* "H.R. 6938" or "PN 373"; nullable */ }
 
 // SenatorVote (name, party, state are optional display fields)
 { voteId, bioguideId, position /* "Yea" | "Nay" | "Present" | "Not Voting" */, name, party, state }
@@ -275,6 +276,7 @@ CLAUDE.md
 11. **Python style:** type hints everywhere, `async` route handlers and `httpx.AsyncClient`, format with `ruff` (or `black`). Pin dependencies in `requirements.txt`.
 12. **Don't add heavy dependencies** without noting why in the PR.
 13. **Test manually in the FastAPI UI.** Run `uvicorn app.main:app --reload` and try each endpoint at http://localhost:8000/docs. Use `python -m scripts.ingest --dry-run --limit 3` to check the data sources without writing to Firestore. Don't add an automated test suite unless the team decides to.
+14. **Vote labels are two lines:** `title` (what it's about), then the plain-English vote type from `voteSubtitle()` in `frontend/lib/display.js`. Keep the vote type visible, because a Yea on a procedural vote doesn't necessarily mean support for the measure.
 
 ---
 

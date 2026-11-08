@@ -60,6 +60,14 @@ async def voteview_session(client: httpx.AsyncClient, congress: int, session: in
     return [v for v in cache[congress] if v.session == session]
 
 
+def document_label(policy_id: str | None) -> str | None:
+    """"119-hr-6938" -> "H.R. 6938"."""
+    if not policy_id:
+        return None
+    _, ptype, number = split_policy_id(policy_id)
+    return display_number(ptype, number)
+
+
 def to_records(pv: ParsedVote, index: SenatorIndex) -> tuple[Vote, list[SenatorVote], int]:
     members, unknown = [], 0
     for p in pv.positions:
@@ -72,7 +80,9 @@ def to_records(pv: ParsedVote, index: SenatorIndex) -> tuple[Vote, list[SenatorV
                                    name=s.name, party=s.party, state=s.state))
     vote = Vote(vote_id=pv.vote_id, congress=pv.congress, session=pv.session, vote_number=pv.vote_number,
                 date=pv.date, question=pv.question, result=pv.result, policy_id=pv.policy_id,
-                tally=Tally(**pv.tally()))
+                tally=Tally(**pv.tally()),
+                title=pv.document_short_title or pv.document_title,
+                document_label=document_label(pv.policy_id))
     return vote, members, unknown
 
 
