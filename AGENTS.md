@@ -1,5 +1,6 @@
 # Agent Guide: Senate Vote Tracker
 
+
 Read this first. It is the source of truth for project scope. If a task isn't covered here or goes against it, stop and ask a human teammate instead of guessing. When the team changes a decision, update this file in the same change.
 
 ---
