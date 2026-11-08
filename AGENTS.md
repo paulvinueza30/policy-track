@@ -36,7 +36,7 @@ A regular person who wants to know, without spin, how their senators and represe
 - **Rolling 4-year window**: from today minus 4 years to today. Compute it at runtime. Never hardcode dates. As of Nov 2026 this covers part of the 117th Congress (2nd session, 2022), the 118th (2023–2024) and the 119th (2025–2026).
 - Recorded roll-call votes on bills, resolutions, amendments and nominations (nominations are Senate-only), plus procedural votes
 - A clickable congressional district map for each state (§4.5, §12)
-- News articles linked to a policy
+- News articles linked to a policy, and a home page news feed from vetted national outlets (§4.4)
 - AI summaries and Q&A about a single policy, using our self-hosted DeepSeek. A site-wide animated assistant character is the way users ask (§6)
 
 ### Out of scope. Do not build these unless the team updates this file.
@@ -130,7 +130,10 @@ Browser ──> Next.js frontend (React, JS) ──> FastAPI backend (Python) �
 
 ### 4.4 News articles
 - Provider: **GNews** (`https://gnews.io/api/v4/search`, free tier 100 requests/day), behind one adapter in `backend/app/services/news/` so it can be swapped.
-- Env var `NEWS_API_KEY`. The query is the short title, the nominee's name for nominations, or the bill number (e.g. `"S. 316" Congress`) when the title is a long official one.
+- Env var `NEWS_API_KEY`. The query is the short title or popular name, the nominee's name for nominations, or the bill number (e.g. `"S. 316" Congress`) when the title is a long official one.
+- GNews allows about 1 request per second, so every call is spaced at least 1.2 s apart. Only paid plans return articles older than about 30 days.
+- **Policy articles** are searched from the start of the bill's Congress. If a named bill finds nothing, one fallback searches its number, and keeps only articles whose headline or description cites that number. Any publisher can appear here, but opinion pieces and articles that neither cite the bill number nor use most of the words in its name are removed when served, so older cached articles are covered too. Results are cached 24 hours; empty results 1 hour. Errors and rate limits are never cached, and a blank response never erases articles already cached.
+- **Home page feed** (`GET /api/news`): at most 9 articles from the outlet allowlist `ALLOWED_NEWS_DOMAINS` in `backend/app/services/news/`, matched on URL domain. Opinion pieces and items not about Congress or federal policy are removed. Cached 3 hours in `meta/newsFeed` (1 hour if empty), so page loads don't call GNews. Stale results are served if GNews fails; `503` only with no cache at all.
 - Store only the title, source, URL, published date and short description. **Do not scrape or store full article text.** Link out to the publisher.
 
 ### 4.5 Congressional district boundaries (map shapes)
@@ -179,7 +182,7 @@ These are the shared contract between frontend and backend, so don't rename fiel
   latestAction /* { date: "YYYY-MM-DD", text } | null */ }
 
 // Article
-{ policyId, title, source, url, publishedAt, description }
+{ policyId /* null in the home page feed */, title, source, url, publishedAt, description }
 
 // AiSummary
 { policyId, model, generatedAt, summary, keyPoints: [], sources: [] }
@@ -201,6 +204,7 @@ Dates in API responses are ISO 8601 strings.
 | `policies/{policyId}/articles` | hash of the article URL | `Article` + `fetchedAt` |
 | `aiSummaries` | `{policyId}__{model}` (`:` and `/` in the model name become `_`) | `AiSummary` |
 | `meta` | e.g. `ingest` | last ingested vote per chamber/congress/session, used for incremental updates |
+| `meta` | `newsFeed` | home page feed: `{ fetchedAt, articles: Article[] }` |
 
 Rules:
 - **Only the backend talks to Firestore**, using the Python `firebase-admin` SDK in `backend/app/db/`. Set the security rules to deny all client reads and writes.
@@ -211,7 +215,7 @@ Rules:
 - Use **batched writes** (max 500 operations per batch) during ingest.
 - Keep reads low and never read a whole collection on a request. Member vote pages use `offset()` + `limit()` so the API can take a page number (at most ~2,000 votes per member, so the skipped reads stay small).
 - **Write cost:** each Senate vote is ~101 writes and each House vote is ~436 (the vote + one copy per member). A full 4-year load is about 270,000 Senate writes plus 860,000 House writes (1,981 votes), or **roughly 1.1 million writes**. The free Spark plan allows 20,000 writes/day, so **the full load needs the Blaze plan** (about $2). Test with `--limit`.
-- Articles are cached for 24 hours. Votes and policies are written once and not re-fetched.
+- Policy articles are cached for 24 hours, or 1 hour when the result is empty. The news feed is cached for 3 hours. Votes and policies are written once and not re-fetched.
 
 ---
 
@@ -238,7 +242,7 @@ Rules:
 - "Ask about this policy" (`POST /api/ai/ask`) answers one question at a time from the same grounded context. Answers aren't cached.
 - **Grounding check:** only the context block counts as evidence. A number in the user's question or the task text doesn't, and list markers at the start of a line are ignored.
 - **Questions with no CRS text:** the backend answers questions about what an item contains with a fixed "not enough information" reply and no model call. Questions about the recorded votes or latest action still go to the model, with an instruction not to describe the item's contents.
-- **Assistant character:** `frontend/components/Assistant.js` is an animated character on every page that opens a chat. It answers only for a single policy: on policy pages and on votes linked to a policy, through `POST /api/ai/ask`. Everywhere else it shows a fixed message asking the user to open a policy, with no backend call.
+- **Assistant character:** `frontend/components/Assistant.js` is an animated character on every page that opens a chat. It answers only for a single policy: on policy pages and on votes linked to a policy, through `POST /api/ai/ask`. Everywhere else it shows a fixed message asking the user to open a policy, with no backend call. **The character is off for the demo.** Its code and `POST /api/ai/ask` remain.
 
 ---
 
@@ -257,7 +261,8 @@ Rules:
 | `GET /api/members/{bioguideId}/votes?chamber=&from=&to=&position=&page=&pageSize=` | `{ items: (Vote & { position })[], page, pageSize, total }`. Dates are `YYYY-MM-DD`, clamped to the window; `pageSize` defaults to 25, max 100 |
 | `GET /api/votes/{voteId}` | `Vote` + `memberVotes: MemberVote[]` (sorted by state, then district, then name). `senatorVotes` is a temporary copy for the current frontend |
 | `GET /api/policies/{policyId}` | `Policy` + `votes: Vote[]` from both chambers (newest first) |
-| `GET /api/policies/{policyId}/articles` | `Article[]`, newest first. Cached 24 h; stale cache is served if GNews fails, otherwise `503` |
+| `GET /api/policies/{policyId}/articles` | `Article[]`, newest first. Cached 24 h (empty results 1 h); stale cache is served if GNews fails, otherwise `503` |
+| `GET /api/news` | `Article[]`, newest first, at most 9, `policyId` null. Cached 3 h; stale cache is served if GNews fails, otherwise `503` |
 | `POST /api/ai/summary` body `{ policyId, stateCode?, regenerate? }` | `AiSummary` |
 | `POST /api/ai/ask` body `{ policyId, question, stateCode? }` | `AiAnswer`. `question` is 3–500 characters |
 

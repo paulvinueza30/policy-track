@@ -84,6 +84,9 @@ class Repository:
         batch.set(policy_ref, {"articlesFetchedAt": fetched_at}, merge=True)
         await batch.commit()
 
+    async def touch_articles(self, policy_id: str, fetched_at: datetime) -> None:
+        await self.db.collection("policies").document(policy_id).set({"articlesFetchedAt": fetched_at}, merge=True)
+
     async def get_ai_summary(self, policy_id: str, model: str) -> dict | None:
         snap = await self.db.collection("aiSummaries").document(ai_summary_doc_id(policy_id, model)).get()
         return snap.to_dict() if snap.exists else None

@@ -99,7 +99,7 @@ class Policy(CamelModel):
 
 
 class Article(CamelModel):
-    policy_id: str
+    policy_id: str | None = None  # None for the home page feed
     title: str
     source: str
     url: str
