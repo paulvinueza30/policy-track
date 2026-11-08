@@ -2,7 +2,7 @@
 
 Read this first. It is the source of truth for project scope. If a task isn't covered here or goes against it, stop and ask a human teammate instead of guessing. When the team changes a decision, update this file in the same change.
 
-> **Status: the House of Representatives is newly in scope.** This file describes the target design. The code on `test` is still Senate-only (`/api/senators`, the `senators` collection, `SenatorVote`) until the House work lands. Build toward this file, and see §12 for the frontend UI.
+> **Status: the House of Representatives is newly in scope.** The House backend is built on the `backend-(dhyan)` branch. The frontend still needs to move to it (§12); until then the old `/api/senators` routes keep working. Older branches still read the legacy `senators` collection, so don't delete it until everyone has moved over.
 
 ---
 
@@ -41,7 +41,7 @@ A regular person who wants to know, without spin, how their senators and represe
 
 ### Out of scope. Do not build these unless the team updates this file.
 - State legislatures, governors
-- Non-voting House delegates and the Resident Commissioner (DC, PR, GU, VI, AS, MP)
+- Non-voting House delegates and the Resident Commissioner (DC, PR, GU, VI, AS, MP) as members. They aren't listed, but they do count in the official tally on some amendment votes (Committee of the Whole), so a vote's tally can be up to 6 higher than the members listed
 - Elections of the Speaker (20 roll calls in the window). Members vote for a person, not Yea/Nay, so these don't fit the vote model. The ingest skips them
 - Voice votes and other votes with no recorded individual positions
 - ZIP-code-to-district lookup (the UI links to house.gov instead; see §12)
@@ -111,14 +111,14 @@ Browser ──> Next.js frontend (React, JS) ──> FastAPI backend (Python) �
 - `<vote>` can be `Yea`, `Nay`, **`Aye`, `No`**, `Present` or `Not Voting`. Normalize `Aye` to `Yea` and `No` to `Nay`.
 - Useful fields: `<congress>`, `<session>` (`1st`/`2nd`), `<rollcall-num>`, `<legis-num>` (`H R 35`), `<vote-question>`, `<vote-result>`, `<action-date>` (`13-Feb-2025`), `<action-time time-etz="10:45">`.
 - `<vote-desc>` is often the bill's popular name (`Agent Raul Gonzalez Officer Safety Act`). Use it as the vote `title`.
-- Skip `Election of the Speaker` votes (§2). No API key needed. Throttle requests; past votes never change.
+- Skip `Election of the Speaker` votes and quorum calls (`<vote-type>QUORUM</vote-type>`) (§2). No API key needed. Throttle requests; past votes never change.
 - If the Clerk site is blocked or down, fall back to Voteview for that session, the same way as the Senate.
 
 ### 4.2b Voteview (fallback for votes)
 - UCLA's public roll-call dataset, built from official congressional records. No key needed. Files per Congress and chamber (`S` or `H`):
   `https://voteview.com/static/data/out/{rollcalls|votes|members}/{S|H}{congress}_{kind}.csv`
 - `clerk_rollnumber` is the official vote number, so vote IDs match the official sources (`s-119-1-00042`, `h-119-1-00042`).
-- House `members` files include delegates; drop any `state_abbrev` outside the 50 states. `district_code` 0 or 1 in a single-district state is at-large.
+- House `members` files include delegates. Keep them when counting tallies, but the ingest doesn't list them as members.
 - Cast codes: 1 = Yea, 6 = Nay, 7/8 = Present, 2–5 and 9 = Not Voting (paired/announced votes are not cast votes), 0 = not a member.
 - `members` CSV has `bioguide_id`, so no LIS mapping is needed. Voteview has no time of day; dates are stored as noon US Eastern.
 - Code: `backend/app/services/voteview/`.
@@ -139,10 +139,10 @@ Browser ──> Next.js frontend (React, JS) ──> FastAPI backend (Python) �
 - This is the one exception to rule 4: map shapes are bundled with the frontend, because they aren't member or vote data and never change during a Congress.
 - **Regenerate when a new Congress starts** (the 120th begins January 2027, and several states have redrawn their maps). TIGERweb's Legislative service already lists a 120th Congress layer.
 
-### 4.6 Member photos (planned; the frontend uses initials for now)
-- **Yes, photos can come from an API.** The backend saves one URL per member in `photoUrl` during ingest. The frontend never calls a photo service itself.
+### 4.6 Member photos (backend done; the frontend uses initials for now)
+- **Yes, photos can come from an API.** The backend saves one URL per member in `photoUrl` during ingest, and the API already returns it. The frontend never calls a photo service itself.
 - **Primary source:** `https://unitedstates.github.io/images/congress/225x275/{bioguideId}.jpg`. No key needed. Public-domain official portraits. Works from our network. Checked November 2026: 518 of 533 current members and 165 of 174 former members in the window have a photo.
-- **Second source:** Congress.gov `GET /member/{bioguideId}` returns `depiction.imageUrl` and is already wired into the ingest, but Congress.gov doesn't respond from our current network. Use it to fill the gaps once it's reachable.
+- **Second source:** Congress.gov `GET /member/{bioguideId}` returns `depiction.imageUrl`. The ingest uses it to fill the gaps when Congress.gov responds. It sometimes hangs, so the ingest checks it once and skips it for that run if it doesn't answer.
 - A missing photo is normal (new members usually), so `photoUrl` can be `null`. The UI always falls back to initials.
 
 ### Linking a vote to a policy
@@ -241,15 +241,15 @@ Rules:
 | Method & path | Returns |
 |---|---|
 | `GET /api/health` | `{ status, deepseek: "up" \| "down" }` |
-| `GET /api/states/{stateCode}/members?chamber=` | `Member[]` for that state in the window. Senators first, then representatives by district. `chamber` (`senate` or `house`) is optional |
+| `GET /api/states/{stateCode}/members?chamber=` | `Member[]` for that state in the window. Senators first, then representatives by district. `chamber` (`senate` or `house`) is optional. **With `chamber`, each member's `chamber`, `district`, `party` and in-office dates describe their service in that chamber**, so Adam Schiff with `chamber=house` is CA-30 and shows as former |
 | `GET /api/members/{bioguideId}` | `Member` |
 | `GET /api/members/{bioguideId}/votes?chamber=&from=&to=&position=&page=&pageSize=` | `{ items: (Vote & { position })[], page, pageSize, total }`. Dates are `YYYY-MM-DD`, clamped to the window; `pageSize` defaults to 25, max 100 |
-| `GET /api/votes/{voteId}` | `Vote` + `memberVotes: MemberVote[]` (sorted by state, then district, then name) |
+| `GET /api/votes/{voteId}` | `Vote` + `memberVotes: MemberVote[]` (sorted by state, then district, then name). `senatorVotes` is a temporary copy for the current frontend |
 | `GET /api/policies/{policyId}` | `Policy` + `votes: Vote[]` from both chambers (newest first) |
 | `GET /api/policies/{policyId}/articles` | `Article[]`, newest first. Cached 24 h; stale cache is served if GNews fails, otherwise `503` |
 | `POST /api/ai/summary` body `{ policyId, stateCode?, regenerate? }` | `AiSummary` |
 
-**Migration:** keep `/api/states/{code}/senators` and `/api/senators/...` working as thin aliases for Senate members until the frontend has moved to the routes above, then delete them.
+**Migration:** keep `/api/states/{code}/senators` and `/api/senators/...` (already built) working as thin aliases for Senate members until the frontend has moved to the routes above, then delete them.
 
 The frontend reads the backend URL from `NEXT_PUBLIC_API_URL` and keeps all fetch calls in `frontend/lib/api.js`.
 
@@ -339,7 +339,7 @@ CLAUDE.md
 | House scope details | Voting members of the 50 states only; skip Speaker elections; no ZIP lookup | **Proposed**, confirm with team |
 | District map | Clickable per-state map from Census boundary files, current Congress only | **Decided** |
 | Member photos | Initials for now; add `unitedstates/images` through `photoUrl` later | **Decided** |
-| Data model for both chambers | One `members` collection and `Member` model; `s-`/`h-` vote ID prefixes; test data reloaded | **Proposed**, confirm with team |
+| Data model for both chambers | One `members` collection and `Member` model; `s-`/`h-` vote ID prefixes | **Built**, confirm with team |
 | Firebase plan | Blaze required for the full load (about $2) | _TBD_, Firebase owner |
 | Ingest strategy | Pre-ingest with `backend/scripts/ingest.py`; API reads only Firestore (plus GNews for articles) | **Decided** |
 | Styling | Tailwind / CSS Modules | _TBD_ |

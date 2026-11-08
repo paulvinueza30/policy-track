@@ -2,25 +2,50 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
 Position = Literal["Yea", "Nay", "Present", "Not Voting"]
+Chamber = Literal["senate", "house"]
 
 
 class CamelModel(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 
-class Senator(CamelModel):
+class MemberRole(CamelModel):
+    """One stretch of service: a chamber, state and (for the House) district."""
+    chamber: Chamber
+    state: str
+    district: int | None = None
+    party: str = ""
+    start: datetime | None = Field(default=None, alias="from")
+    end: datetime | None = Field(default=None, alias="to")  # None if current
+
+
+class Member(CamelModel):
     bioguide_id: str
-    lis_id: str | None = None
+    lis_id: str | None = None  # senators only
     name: str
     party: str
     state: str
+    chamber: Chamber  # current or most recent
+    district: int | None = None  # 0 = at-large; None for senators
     in_office_from: datetime | None = None
     in_office_to: datetime | None = None  # None if current
     photo_url: str | None = None
+    roles: list[MemberRole] = []
+
+    def for_chamber(self, chamber: Chamber) -> "Member | None":
+        """A copy describing this person's service in one chamber, or None if they never served there."""
+        roles = [r for r in self.roles if r.chamber == chamber]
+        if not roles:
+            return None
+        last = roles[-1]
+        return self.model_copy(update={
+            "chamber": chamber, "district": last.district, "party": last.party or self.party, "state": last.state,
+            "in_office_from": roles[0].start, "in_office_to": last.end,
+        })
 
 
 class Tally(CamelModel):
@@ -31,7 +56,8 @@ class Tally(CamelModel):
 
 
 class Vote(CamelModel):
-    vote_id: str  # "119-1-00042"
+    vote_id: str  # "s-119-1-00042" or "h-119-1-00042"
+    chamber: Chamber
     congress: int
     session: int
     vote_number: int
@@ -44,7 +70,7 @@ class Vote(CamelModel):
     document_label: str | None = None  # e.g. "H.R. 6938" or "PN 373"
 
 
-class SenatorVote(CamelModel):
+class MemberVote(CamelModel):
     vote_id: str
     bioguide_id: str
     position: Position
@@ -52,6 +78,7 @@ class SenatorVote(CamelModel):
     name: str | None = None
     party: str | None = None
     state: str | None = None
+    district: int | None = None
 
 
 class LatestAction(CamelModel):

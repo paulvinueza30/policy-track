@@ -117,6 +117,7 @@ def parse_vote(content: bytes) -> ParsedVote:
         ))
 
     return ParsedVote(
+        chamber="senate",
         congress=congress,
         session=int(_text(root, "session")),
         vote_number=int(_text(root, "vote_number")),
