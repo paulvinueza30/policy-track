@@ -29,7 +29,7 @@ export default function DistrictMap({ state, district, members = [] }) {
     <div className="map-canvas">
       {!data && <p className="empty" role="status">{error ? "The district map is unavailable. Use the district selector below." : "Loading district boundaries…"}</p>}
       {data && <svg viewBox={data.viewBox} className="district-map" role="group" aria-label={state.name + " congressional districts"}>
-        {data.districts.map(item => <Link key={item.district} href={stateHref(state.code, "house", item.district)} prefetch={false}
+        {data.districts.map(item => <Link key={item.district} href={stateHref(state.code, "house", item.district)} prefetch={false} scroll={false}
           aria-label={state.name + " " + (item.district === 0 ? "At-large" : ordinal(item.district)) + " Congressional District"}
           aria-current={district === item.district ? "true" : undefined}
           onPointerEnter={event => { if (event.pointerType === "mouse") locate(event, item.district); }}
@@ -40,7 +40,7 @@ export default function DistrictMap({ state, district, members = [] }) {
       {tooltip && <div className="map-tooltip" aria-hidden="true" style={{left:tooltip.x,top:tooltip.y}}><strong>{tooltip.text}</strong></div>}
     </div>
     <label className="district-selector">Congressional district
-      <select value={district ?? ""} onChange={event => router.push(stateHref(state.code, "house", event.target.value === "" ? null : Number(event.target.value)))}>
+      <select value={district ?? ""} onChange={event => router.push(stateHref(state.code, "house", event.target.value === "" ? null : Number(event.target.value)), { scroll: false })}>
         <option value="">Select a district</option>
         {numbers.map(number => <option key={number} value={number}>{districtLabel({state:state.code,district:number})}</option>)}
       </select>
