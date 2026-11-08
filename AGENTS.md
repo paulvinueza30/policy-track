@@ -37,7 +37,7 @@ A regular person who wants to know, without spin, how their senators and represe
 - Recorded roll-call votes on bills, resolutions, amendments and nominations (nominations are Senate-only), plus procedural votes
 - A clickable congressional district map for each state (§4.5, §12)
 - News articles linked to a policy
-- AI summaries and Q&A about a single policy, using our self-hosted DeepSeek
+- AI summaries and Q&A about a single policy, using our self-hosted DeepSeek. A site-wide animated assistant character is the way users ask (§6)
 
 ### Out of scope. Do not build these unless the team updates this file.
 - State legislatures, governors
@@ -183,6 +183,9 @@ These are the shared contract between frontend and backend, so don't rename fiel
 
 // AiSummary
 { policyId, model, generatedAt, summary, keyPoints: [], sources: [] }
+
+// AiAnswer (one question about one policy; not cached)
+{ policyId, model, generatedAt, question, answer, sources: [] }
 ```
 
 Dates in API responses are ISO 8601 strings.
@@ -225,9 +228,17 @@ Rules:
 - **Output** must match the `AiSummary` shape: a plain-language summary (about 150 words), 3–5 key points, and a `sources` list of what it used.
 - **Neutral tone:** no opinions, no "good/bad" judgments, no telling the user how to feel or vote.
 - **Cache** summaries in Firestore `aiSummaries`, keyed by `policyId + model`. Regenerate only when the user clicks "Regenerate."
+- **The cached summary is state-neutral.** A `stateCode` adds key points at response time, built from the vote record and not by the model, so one state's view is never served to another.
+- **`sources` are built by the backend** from what was placed in the prompt. The model never supplies them.
+- **No CRS summary means no generated summary.** Nominations and bills without CRS text return the official record with `model: "official record (no AI)"`, uncached. The model invented details when it had only a title to work from.
+- **Vote facts come from the record.** Summary prompts omit votes, and the backend adds dates and tallies as key points. Any output with a number or month-and-day that isn't in the prompt is rejected and retried once.
+- **Serving:** Ollama, one request at a time (`DEEPSEEK_MAX_CONCURRENT`). Ollama's OpenAI endpoint can't set the context size, so create the model from `backend/ollama/deepseek-r1-8b-8k.Modelfile` and use that name as `DEEPSEEK_MODEL`.
 - **Stream** to the UI with FastAPI `StreamingResponse` if easy. If not, show a loading state.
 - If the DeepSeek server is down or times out, the API returns a clear error (`503` with a message). The rest of the app must still work.
-- Optional stretch goal: "Ask about this policy" chat that uses the same grounding rules.
+- "Ask about this policy" (`POST /api/ai/ask`) answers one question at a time from the same grounded context. Answers aren't cached.
+- **Grounding check:** only the context block counts as evidence. A number in the user's question or the task text doesn't, and list markers at the start of a line are ignored.
+- **Questions with no CRS text:** the backend answers questions about what an item contains with a fixed "not enough information" reply and no model call. Questions about the recorded votes or latest action still go to the model, with an instruction not to describe the item's contents.
+- **Assistant character:** `frontend/components/Assistant.js` is an animated character on every page that opens a chat. It answers only for a single policy: on policy pages and on votes linked to a policy, through `POST /api/ai/ask`. Everywhere else it shows a fixed message asking the user to open a policy, with no backend call.
 
 ---
 
@@ -248,6 +259,7 @@ Rules:
 | `GET /api/policies/{policyId}` | `Policy` + `votes: Vote[]` from both chambers (newest first) |
 | `GET /api/policies/{policyId}/articles` | `Article[]`, newest first. Cached 24 h; stale cache is served if GNews fails, otherwise `503` |
 | `POST /api/ai/summary` body `{ policyId, stateCode?, regenerate? }` | `AiSummary` |
+| `POST /api/ai/ask` body `{ policyId, question, stateCode? }` | `AiAnswer`. `question` is 3–500 characters |
 
 **Migration:** keep `/api/states/{code}/senators` and `/api/senators/...` (already built) working as thin aliases for Senate members until the frontend has moved to the routes above, then delete them.
 
@@ -357,6 +369,8 @@ NEWS_API_KEY=
 DEEPSEEK_BASE_URL=        # e.g. https://<private-server>/v1
 DEEPSEEK_API_KEY=
 DEEPSEEK_MODEL=
+DEEPSEEK_TIMEOUT_SECONDS=60   # optional; keep below the 65 s AI timeout in frontend/lib/api.js
+DEEPSEEK_MAX_CONCURRENT=1     # optional
 
 FIREBASE_PROJECT_ID=
 FIREBASE_CLIENT_EMAIL=
