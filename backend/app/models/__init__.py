@@ -116,6 +116,14 @@ class AiSummary(CamelModel):
     sources: list[str] = []
 
 
+class PolicySummary(CamelModel):
+    """Built from the official record only: no model and no generated text."""
+    policy_id: str
+    summary: str
+    key_points: list[str] = []
+    sources: list[str] = []
+
+
 class AiAnswer(CamelModel):
     policy_id: str
     model: str

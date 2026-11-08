@@ -10,11 +10,10 @@ from pydantic import StringConstraints
 from app.config import settings
 from app.db.repository import Repository
 from app.deps import get_repo
-from app.models import AiSummary, Article, CamelModel, MemberVote, Policy, Vote
-from app.routers.policies import _load_policy
+from app.models import AiSummary, Article, CamelModel, Policy, Vote
+from app.routers.policies import _load_policy, _state, _state_votes, _votes
 from app.services.ai import AiUnavailable, answer_question, generate_summary, record_summary
-from app.services.ai.prompts import PolicyContext, StateVote, newest_per_chamber, state_vote_point
-from app.states import normalize_state
+from app.services.ai.prompts import PolicyContext, state_vote_point
 
 router = APIRouter(tags=["ai"])
 logger = logging.getLogger(__name__)
@@ -33,32 +32,6 @@ class AskRequest(CamelModel):
     policy_id: str
     question: Question
     state_code: str | None = None
-
-
-def _state(code: str | None) -> str | None:
-    if not code:
-        return None
-    state = normalize_state(code)
-    if not state:
-        raise HTTPException(status_code=400, detail="stateCode must be one of the 50 state codes")
-    return state
-
-
-async def _votes(policy_id: str, repo: Repository) -> list[Vote]:
-    return [Vote.model_validate(v) for v in await repo.policy_votes(policy_id)]
-
-
-async def _state_votes(state: str | None, votes: list[Vote], repo: Repository) -> list[StateVote]:
-    """The state's members on the newest roll call in each chamber."""
-    if not state:
-        return []
-    out = []
-    for vote in newest_per_chamber(votes):
-        doc = await repo.get_vote(vote.vote_id) or {}
-        members = [MemberVote.model_validate(m) for m in doc.get("members", []) if m.get("state") == state]
-        if members:
-            out.append(StateVote(vote=vote, members=members))
-    return out
 
 
 async def _context(policy: Policy, repo: Repository, state: str | None = None,

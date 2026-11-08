@@ -242,6 +242,7 @@ Rules:
 - "Ask about this policy" (`POST /api/ai/ask`) answers one question at a time from the same grounded context. Answers aren't cached.
 - **Grounding check:** only the context block counts as evidence. A number in the user's question or the task text doesn't, and list markers at the start of a line are ignored.
 - **Questions with no CRS text:** the backend answers questions about what an item contains with a fixed "not enough information" reply and no model call. Questions about the recorded votes or latest action still go to the model, with an instruction not to describe the item's contents.
+- **Policy page summary:** the policy page shows a regular Summary built from the official record by `GET /api/policies/{policyId}/summary`, with no model. `POST /api/ai/summary`, `POST /api/ai/ask` and the DeepSeek code stay for later but aren't used by the page.
 - **Assistant character (currently off for the demo: not mounted in `frontend/app/layout.js`, code kept):** `frontend/components/Assistant.js` is an animated character that opens a chat. It answers only for a single policy: on policy pages and on votes linked to a policy, through `POST /api/ai/ask`. Everywhere else it shows a fixed message asking the user to open a policy, with no backend call. **The character is off for the demo.** Its code and `POST /api/ai/ask` remain.
 
 ---
@@ -263,6 +264,7 @@ Rules:
 | `GET /api/policies/{policyId}` | `Policy` + `votes: Vote[]` from both chambers (newest first) |
 | `GET /api/policies/{policyId}/articles` | `Article[]`, newest first. Cached 24 h (empty results 1 h); stale cache is served if GNews fails, otherwise `503` |
 | `GET /api/news` | `Article[]`, newest first, at most 9, `policyId` null. Cached 3 h; stale cache is served if GNews fails, otherwise `503` |
+| `GET /api/policies/{policyId}/summary?stateCode=` | `{ policyId, summary, keyPoints: [], sources: [] }`. `summary` is the full CRS text, or a notice when there is none. `keyPoints` are the latest action, the newest vote in each chamber and, with `stateCode`, that state's members. `sources` are Congress.gov and the roll calls. No model call and no writes |
 | `POST /api/ai/summary` body `{ policyId, stateCode?, regenerate? }` | `AiSummary` |
 | `POST /api/ai/ask` body `{ policyId, question, stateCode? }` | `AiAnswer`. `question` is 3–500 characters |
 
