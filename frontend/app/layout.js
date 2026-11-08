@@ -6,7 +6,7 @@ const bodyFont = Lato({ subsets: ["latin"], weight: ["400", "700", "900"], varia
 const headlineFont = Libre_Baskerville({ subsets: ["latin"], weight: ["400", "700"], variable: "--font-headline" });
 
 export const metadata = {
-  title: "RealNew | U.S. Congress Vote Tracker",
+  title: "RealNews | U.S. Congress Vote Tracker",
   description: "Explore U.S. Congress voting records and policy in plain English.",
 };
 
@@ -19,19 +19,19 @@ export default function RootLayout({ children }) {
             <Link className="brand" href="/">
               <span className="monogram" aria-hidden="true"><b>R</b>N</span>
               <span>
-                <strong>RealNew</strong> <span className="tag">Civic</span>
+                <strong>RealNews</strong> <span className="tag">Civic</span>
                 <small>U.S. Congress votes in plain English</small>
               </span>
             </Link>
             <nav className="site-nav" aria-label="Main navigation">
-              <Link href="/#explore">Explore</Link>
+              <Link href="/#explore">Explore</Link><Link href="/feed">My feed</Link><Link href="/sign-in">Account</Link>
             </nav>
           </div>
         </header>
         {children}
         <footer className="site-footer" id="about">
           <div className="frame">
-            <strong>RealNew</strong>
+            <strong>RealNews</strong>
             <p>A Policy Track project for exploring the U.S. Congress.</p>
           </div>
         </footer>

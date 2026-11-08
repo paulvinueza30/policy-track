@@ -143,3 +143,26 @@ class Repository:
 
     async def set_meta(self, key: str, data: dict) -> None:
         await self.db.collection("meta").document(key).set(data, merge=True)
+
+    # Private preferences are always addressed by the verified Google subject.
+    async def get_preferences(self, user_id: str) -> dict:
+        snap = await self.db.collection("accounts").document(user_id).get()
+        return (snap.to_dict() or {}) if snap.exists else {"state": None, "district": None, "following": []}
+
+    async def save_preferences(self, user_id: str, preferences: dict) -> None:
+        await self.db.collection("accounts").document(user_id).set(preferences)
+
+    async def feed_votes(self, member_ids: list[str] | None, start: datetime, end: datetime, count: int) -> list[dict]:
+        import asyncio
+        async def read(collection):
+            query = (collection.where(filter=FieldFilter("date", ">=", start))
+                     .where(filter=FieldFilter("date", "<=", end))
+                     .order_by("date", direction=firestore.Query.DESCENDING)
+                     .order_by("voteNumber", direction=firestore.Query.DESCENDING).limit(count))
+            return [d.to_dict() async for d in query.stream()]
+        if member_ids is None:
+            groups = [await read(self.db.collection("votes"))]
+        else:
+            groups = await asyncio.gather(*(read(self.db.collection("members").document(mid).collection("votes")) for mid in member_ids[:20]))
+        votes = {v["voteId"]: v for group in groups for v in group if "chamber" in v}
+        return sorted(votes.values(), key=lambda v: (v["date"], v["voteNumber"], v["voteId"]), reverse=True)[:count]

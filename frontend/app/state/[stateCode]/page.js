@@ -21,7 +21,7 @@ export default async function StatePage({ params, searchParams }) {
   });
   const members = delegation instanceof ApiError ? null : delegation;
   const message = delegation instanceof ApiError ? {
-    0: "RealNew could not reach the FastAPI backend.",
+    0: "RealNews could not reach the FastAPI backend.",
     501: "This backend version does not provide member delegations.",
     503: "The backend is running, but its member data store is unavailable.",
   }[delegation.status] ?? "The delegation is unavailable right now. Try again later." : undefined;

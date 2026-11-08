@@ -1,4 +1,5 @@
 import Link from "next/link";
+import FollowMember from "@/components/FollowMember";
 import { notFound } from "next/navigation";
 import { Portrait, VoteBadge, VoteCard } from "@/components/VoteLens";
 import { ApiError, getMember, getMemberVotes } from "@/lib/api";
@@ -67,6 +68,7 @@ export default async function MemberPage({ params, searchParams }) {
         </div>
         <a href="#recent-policies" className="button">View voting record ↓</a>
       </section>
+      <FollowMember id={member.bioguideId} />
       <section className="section" id="recent-policies">
         <div className="section-heading">
           <div><p className="eyebrow">Member dossier</p><h2>{voteHeading}</h2></div>
