@@ -1,4 +1,4 @@
-# Agent Guide: VoteLens, a U.S. Congress Vote Tracker
+# Agent Guide: RealNews, a U.S. Congress Vote Tracker
 
 Read this first. It is the source of truth for project scope. If a task isn't covered here or goes against it, stop and ask a human teammate instead of guessing. When the team changes a decision, update this file in the same change.
 
@@ -37,7 +37,7 @@ A regular person who wants to know, without spin, how their senators and represe
 - Recorded roll-call votes on bills, resolutions, amendments and nominations (nominations are Senate-only), plus procedural votes
 - A clickable congressional district map for each state (§4.5, §12)
 - News articles linked to a policy, and a home page news feed from vetted national outlets (§4.4)
-- AI summaries and Q&A about a single policy, using our self-hosted DeepSeek. A site-wide animated assistant character is the way users ask (§6)
+- AI summaries and Q&A about a single policy, using our self-hosted DeepSeek. A site-wide animated assistant character is the way users ask, and is currently off for the demo (§6)
 
 ### Out of scope. Do not build these unless the team updates this file.
 - State legislatures, governors
@@ -242,7 +242,7 @@ Rules:
 - "Ask about this policy" (`POST /api/ai/ask`) answers one question at a time from the same grounded context. Answers aren't cached.
 - **Grounding check:** only the context block counts as evidence. A number in the user's question or the task text doesn't, and list markers at the start of a line are ignored.
 - **Questions with no CRS text:** the backend answers questions about what an item contains with a fixed "not enough information" reply and no model call. Questions about the recorded votes or latest action still go to the model, with an instruction not to describe the item's contents.
-- **Assistant character:** `frontend/components/Assistant.js` is an animated character on every page that opens a chat. It answers only for a single policy: on policy pages and on votes linked to a policy, through `POST /api/ai/ask`. Everywhere else it shows a fixed message asking the user to open a policy, with no backend call. **The character is off for the demo.** Its code and `POST /api/ai/ask` remain.
+- **Assistant character (currently off for the demo: not mounted in `frontend/app/layout.js`, code kept):** `frontend/components/Assistant.js` is an animated character that opens a chat. It answers only for a single policy: on policy pages and on votes linked to a policy, through `POST /api/ai/ask`. Everywhere else it shows a fixed message asking the user to open a policy, with no backend call. **The character is off for the demo.** Its code and `POST /api/ai/ask` remain.
 
 ---
 
@@ -393,13 +393,13 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 ## 12. Frontend UI spec: Senate + House
 
-**Audience: the frontend developer.** Keep the existing VoteLens visual design (panels, typography, badges, the map, `VoteCard`, the two-line vote labels). This is a change to content and navigation, not a redesign. Work in `frontend/` only and use the routes in §7.
+**Audience: the frontend developer.** Keep the existing RealNews visual design (panels, typography, badges, the map, `VoteCard`, the two-line vote labels). This is a change to content and navigation, not a redesign. Work in `frontend/` only and use the routes in §7.
 
 ### 12.1 Site-wide copy
 
 | Where | New text |
 |---|---|
-| Browser title (`layout.js`) | `VoteLens \| U.S. Congress Vote Tracker` |
+| Browser title (`layout.js`) | `RealNews \| U.S. Congress Vote Tracker` |
 | Header tagline | `U.S. Congress votes in plain English` |
 | Home heading | `Understand how your members of Congress vote on what matters to you.` |
 | Home intro | `Explore your state's senators and representatives, browse roll-call votes, and see policy explained in plain English.` |
@@ -546,7 +546,7 @@ The user approved the RealNews brand and expanded scope to accounts, Google SSO,
 
 ____UPDATE_____
 
-# Stitch Frontend and Backend Integration — VoteLens
+# Stitch Frontend and Backend Integration — RealNews
 
 ## 1. Updated Project Scope
 
@@ -798,7 +798,7 @@ Verify the complete flow:
 11. Sign-out works correctly.
 12. Protected endpoints reject unauthorized requests.
 13. Loading, empty, and error states work.
-14. Existing VoteLens functionality continues working.
+14. Existing RealNews functionality continues working.
 
 Add focused tests for authentication, profile access, ZIP/district ambiguity, feed data contracts, and navigation.
 
